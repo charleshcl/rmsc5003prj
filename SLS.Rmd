@@ -1,0 +1,336 @@
+---
+title: "RMSC5003 Project"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+##History
+v0.9
+consolidate the GARCH model
+
+v0.8
+GSLS ok
+getVaR ok
+getES ok
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+install.packages("quantmod")
+install.packages("fGarch")
+```
+
+## function for Generalized SLS
+```{r Generalized SLS function}
+GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
+  
+  ## core function begin
+  numPath <- nrow(price)
+  T   <- ncol(price)
+
+  ## result is an 1 x numPath vector of gain at terminal T
+  result <- rep(0,numPath)
+  
+  for (j in 1:numPath) {
+    # message("j=", j)
+    
+    #initialization
+    I   <- rep(0,T)
+    IL  <- rep(0,T)
+    IS  <- rep(0,T)
+    g   <- rep(0,T)
+    gL  <- rep(0,T)
+    gS  <- rep(0,T)
+    rho <- rep(0,T)
+    V   <- rep(0,T)
+    ctrlrReset <- rep(0,T)
+    
+    for (t in 1:T) {
+      # message("  t=", t)
+      if (t == 1) {
+        gL[t] <- 0
+        gS[t] <- 0
+        g[t]  <- gL[t] + gS[t]
+        IL[t] <-  I0
+        IS[t] <- -alpha*I0
+        V[t]  <- V0
+        I[t]  <- min( IL[t]+abs(IS[t]), gamma*V[t-1] )
+        ctrlrReset[t] <- min(IL[t], abs(IS[t]))
+      } else {
+        rho[t] <- (price[j,t] - price[j,t-1]) / price[j,t-1]
+        gL[t]  <- gL[t-1] + rho[t]*IL[t-1]
+        gS[t]  <- gS[t-1] + rho[t]*IS[t-1]
+        g[t]   <- gL[t] + gS[t]
+        V[t]   <- V[t-1] + g[t] - g[t-1] + r*(V[t-1]-abs(I[t-1]))
+        #message("V=", V[t])
+        if (ctrlrReset[t-1] >= Imin) {
+          #normal case
+          IL[t]  <- max( (1+K*rho[t])*IL[t-1], 0 )
+          IS[t]  <- min( (1-beta*K*rho[t])*IS[t-1], 0 )
+        } else {  
+          #controller reset
+          IL[t]  <- IL[1]
+          IS[t]  <- IS[1]
+        }
+        I[t]   <- min( IL[t]+abs(IS[t]), gamma*V[t-1] )
+        ctrlrReset[t] <- min( IL[t], abs(IS[t]) )
+      }
+      # message("    price[t]=",price[t])
+      # message("    rho[t]=",rho[t])
+      # message("    IL[t]=",IL[t])
+      # message("    gL[t]=",gL[t])
+    }
+
+    result[j]=g[T]
+  }
+  
+  return(result)
+}
+```
+
+## GBM stock price stimulation
+```{r gbm}
+library(quantmod)
+
+#download stock1 price
+S1 = getSymbols("AAPL", from = "2017-11-07", auto.assign = FALSE)
+colnames(S1) = c("Open","High","Low","Close","Volume","Adjusted")
+S1_return = (S1$Close/lag(S1$Close,1)-1)[-1] 
+
+mu1 = mean(S1_return, na.rm=TRUE)
+sigma1 = sd(S1_return, na.rm=TRUE)
+
+#download stock2 price
+S2 = getSymbols("AMZN", from = "2017-11-07", auto.assign = FALSE)
+colnames(S2) = c("Open","High","Low","Close","Volume","Adjusted")
+S2_return = (S2$Close/lag(S2$Close,1)-1)[-1]
+
+mu2 = mean(S2_return, na.rm=TRUE)
+sigma2 = sd(S2_return, na.rm=TRUE)
+rho = cor(S1_return,S2_return)
+
+path = 100
+T = 10
+dt = 1
+time = (0:T)
+nu1 = mu1-0.5*sigma1^2
+nu2 = mu2-0.5*sigma2^2
+
+logS1 = matrix( as.numeric(log(S1[nrow(S1),"Close"])), nrow=path, ncol=T+1)	# n paths log price, col 1=last closing$
+logS2 = matrix( as.numeric(log(S2[nrow(S2),"Close"])), nrow=path, ncol=T+1)	
+
+for (p in 1:path) {
+  for (t in 1:T) {
+    W1 = rnorm(1,0,1)*sqrt(t+1)
+    W2 = rnorm(1,0,1)*sqrt(t+1)
+    logS1[p,t+1] = logS1[p,1] + nu1*time[t+1] + sigma1*W1
+    logS2[p,t+1] = logS2[p,1] + nu2*time[t+1] + sigma2*(rho*W1+sqrt(1-rho^2)*W2)
+  }
+}
+S1_gen = exp(logS1)
+S2_gen = exp(logS2)
+
+#matplot(time,t(S1_gen),type="l")
+#matplot(time,t(S2_gen),type="l")
+```
+
+
+```{r}
+g_S1 <- GSLS(S1_gen, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
+g_S2 <- GSLS(S2_gen, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
+
+VaR_S1 <- getVaR(g_S1,0.95)
+ES_S1 <- getES(g_S1,0.95)
+
+VaR_S2 <- getVaR(g_S2,0.95)
+ES_S2 <- getES(g_S2,0.95)
+
+sprintf("VaR of S1=%f", VaR_S1)
+sprintf("Expected Shortfall of S1=%f", ES_S1)
+sprintf("VaR of S2=%f", VaR_S2)
+sprintf("Expected Shortfall of S2=%f", ES_S2)
+```
+
+```{r Garch}
+#install.packages("quantmod")
+#install.packages("fGarch")
+library(quantmod)
+library(fGarch)
+############# Parameters for Adjustment ##############
+P = 100 # Number of Sample Path
+T = 10  # Length of Simulated Series
+
+############# Download stock data and calculate log-returns ##############
+AAPL <- as.numeric(getSymbols("AAPL", from ="2015-11-09", to = "2018-11-08", auto.assign = FALSE)$AAPL.Close)
+AMZN <- as.numeric(getSymbols("AMZN", from ="2015-11-09", to = "2018-11-08", auto.assign = FALSE)$AMZN.Close)
+Data <- cbind(AAPL, AMZN)
+R <- apply(log(Data),2,diff)
+AAPL_Return <- R[,1]
+AMZN_Return <- R[,2]
+# Plot returns
+par(mfrow=c(2,1))
+plot(R[,1],type="l",xlab="Time",ylab = "AAPL", main="Log-returns for AAPL") # Plot log-return series to visualize heteroskedsticity
+plot(R[,2],type="l",xlab="Time",ylab = "AMZN",  main="Log-returns for AMZN")
+
+# Plot acf & pacf
+acf(AAPL_Return)
+acf(AMZN_Return)
+pacf(AAPL_Return)
+pacf(AMZN_Return)
+acf(AAPL_Return^2)
+acf(AMZN_Return^2)
+pacf(AAPL_Return^2)
+pacf(AMZN_Return^2)
+
+NormModel_1 <- vector("list", 6)
+NormModel_2 <- vector("list", 6)
+
+############# GARCH Model with normal innovations ###################
+
+NormModel_1[[1]] <- garchFit(formula ~ garch(1,0),data = AAPL_Return) 
+NormModel_1[[2]] <- garchFit(formula ~ garch(1,1),data = AAPL_Return) 
+NormModel_1[[3]] <- garchFit(formula ~ garch(1,2),data = AAPL_Return) 
+NormModel_1[[4]] <- garchFit(formula ~ garch(2,0),data = AAPL_Return) 
+NormModel_1[[5]] <- garchFit(formula ~ garch(2,1),data = AAPL_Return) 
+NormModel_1[[6]] <- garchFit(formula ~ garch(2,2),data = AAPL_Return) 
+NormModel_2[[1]] <- garchFit(formula ~ garch(1,0),data = AMZN_Return) 
+NormModel_2[[2]] <- garchFit(formula ~ garch(1,1),data = AMZN_Return)
+NormModel_2[[3]] <- garchFit(formula ~ garch(1,2),data = AMZN_Return)
+NormModel_2[[4]] <- garchFit(formula ~ garch(2,0),data = AMZN_Return)
+NormModel_2[[5]] <- garchFit(formula ~ garch(2,1),data = AMZN_Return)
+NormModel_2[[6]] <- garchFit(formula ~ garch(2,2),data = AMZN_Return)
+NormModel_2[[7]] <- garchFit(formula ~ garch(2,3),data = AMZN_Return)
+NormModel_2[[8]] <- garchFit(formula ~ garch(3,2),data = AMZN_Return)
+
+BIC1 <- as.numeric(sapply(1:6, function(i){NormModel_1[[i]]@fit$ics[2]}))
+BIC2 <- as.numeric(sapply(1:6, function(i){NormModel_2[[i]]@fit$ics[2]}))
+#tModel_1 <- garchFit(formula ~ garch(1,1),data = R[,1],cond.dist = "std",include.shape = F, shape  = 4)
+#tModel_2 <- garchFit(formula ~ garch(1,1),data = R[,2],cond.dist = "std",include.shape = F, shape = 4)
+NormModel_AAPL <- NormModel_1[[which.min(BIC1)]]
+NormModel_AMZN <- NormModel_2[[which.min(BIC2)]]
+mu_AAPL <- NormModel_AAPL@fit$coef[1]
+Gcoef_AAPL <- NormModel_AAPL@fit$coef[-1]
+mu_AMZN <- NormModel_AMZN@fit$coef[1]
+Gcoef_AMZN <- NormModel_AMZN@fit$coef[-1]
+########  Simulation Based on These Model #######
+
+###  AAPL
+
+Sim_AAPL <- function(rept){
+    Sim_AAPL_return <- as.numeric(rep(mu_AAPL, T+1))
+    Sim_AAPL_residual <- rep(residuals(NormModel_AAPL)[length(AAPL_Return)], T+1)
+    Sim_AAPL_sigma2 <- rep(volatility(NormModel_AAPL,type = "h")[length(AAPL_Return)], T+1)
+    for (i in 2:T+1){
+      temp <- c(1,Sim_AAPL_residual[i-1]^2,Sim_AAPL_sigma2[i-1])
+      Sim_AAPL_sigma2[i] <- t(temp) %*% Gcoef_AAPL
+      Sim_AAPL_residual[i] <- rnorm(n=1,mean = 0,sd = Sim_AAPL_sigma2[i]^(0.5))
+    }
+    Sim_AAPL_return <- Sim_AAPL_return + Sim_AAPL_residual
+    Sim_AAPL_return[1] <- 0 ## This is artifically designed to make Sim_AAPL = the current price of AAPL
+    Sim_AAPL <- as.numeric(exp(cumsum(Sim_AAPL_return)) * AAPL[length(AAPL)])
+}
+par(mfrow=c(1,1))
+Output_AAPL <- t(sapply(1:P, Sim_AAPL))
+#plot.zoo(Output_AAPL,plot.type="single")
+
+Sim_AAPL
+
+VaR_AAPL <- getVaR(Output_AAPL,0.95)
+ES_AAPL <- getES(Output_AAPL,0.95)
+
+sprintf("VaR of AAPL=%f", VaR_AAPL)
+sprintf("Expected Shortfall of AAPL=%f", ES_AAPL)
+
+#### AMZN
+
+Sim_AMZN <- function(rept){
+  set.seed(rept)
+  Sim_AMZN_return <- as.numeric(rep(mu_AMZN, T+2))
+  Sim_AMZN_residual <- rep(residuals(NormModel_AMZN)[length(AMZN_Return)], T+2)
+  Sim_AMZN_residual[1] <- residuals(NormModel_AMZN)[length(AMZN_Return)-1]
+  Sim_AMZN_sigma2 <- rep(volatility(NormModel_AMZN,type = "h")[length(AMZN_Return)], T+2)
+  Sim_AMZN_sigma2[1] <- volatility(NormModel_AMZN,type = "h")[length(AMZN_Return)-1]
+  for (i in 3:T+2){
+    temp <- c(1,Sim_AMZN_residual[i-1]^2,Sim_AMZN_residual[i-2]^2,Sim_AMZN_sigma2[i-1],Sim_AMZN_sigma2[i-2])
+    Sim_AMZN_sigma2[i] <- t(temp) %*% Gcoef_AMZN
+    Sim_AMZN_residual[i] <- rnorm(n=1,mean = 0,sd = Sim_AMZN_sigma2[i]^(0.5))
+  }
+  Sim_AMZN_return <- (Sim_AMZN_return + Sim_AMZN_residual)[-1]
+  Sim_AMZN_return[1] <- 0
+  Sim_AMZN <- as.numeric(exp(cumsum(Sim_AMZN_return)) * AMZN[length(AMZN)])
+}
+
+Sim_AMZN_trial <- function(rept){
+  #set.seed(rept)
+  Sim_AMZN_return <- as.numeric(rep(2.579723e-03, T+2))
+  Sim_AMZN_residual <- rep(residuals(NormModel_AMZN)[length(AMZN_Return)], T+2)
+  Sim_AMZN_residual[1] <- residuals(NormModel_AMZN)[length(AMZN_Return)-1]
+  Sim_AMZN_sigma2 <- rep(volatility(NormModel_AMZN,type = "h")[length(AMZN_Return)], T+2)
+  Sim_AMZN_sigma2[1] <- volatility(NormModel_AMZN,type = "h")[length(AMZN_Return)-1]
+  for (i in 3:T+2){
+    temp <- c(1,Sim_AMZN_residual[i-1]^2,Sim_AMZN_residual[i-2]^2,Sim_AMZN_sigma2[i-1],Sim_AMZN_sigma2[i-2])
+    Sim_AMZN_sigma2[i] <- t(temp) %*% c(2.795238e-05,2.003230e-01, 0, 7.280811e-01,0)
+    Sim_AMZN_residual[i] <- rnorm(n=1,mean = 0,sd = Sim_AMZN_sigma2[i]^(0.5))
+  }
+  Sim_AMZN_return <- (Sim_AMZN_return + Sim_AMZN_residual)[-1]
+  Sim_AMZN_return[1] <- 0
+  Sim_AMZN <- as.numeric(exp(cumsum(Sim_AMZN_return)) * AMZN[length(AMZN)])
+}
+par(mfrow=c(1,1))
+Output_AMZN <- t(sapply((1:P), Sim_AMZN_trial))
+  #plot.zoo(Output_AMZN,plot.type="single")
+
+VaR_AMZN <- getVaR(Output_AMZN,0.95)
+ES_AMZN <- getES(Output_AMZN,0.95)
+
+sprintf("VaR of AMZN=%f", VaR_AMZN)
+sprintf("Expected Shortfall of AMZN=%f", ES_AMZN)
+
+
+```
+
+
+######## Unit Test Case ########
+
+## VaR
+
+```{r VaR and ES test}
+sam <- c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20)
+quantile(sam,probs=0.25,na.rm=TRUE)
+
+getVaR <- function(samples, VaRValue) {
+  samples <- sort(samples)
+  len <- length(samples)
+  alpha <- round( len * (1-VaRValue) )
+  VaR <- samples[alpha]
+  return(VaR)
+}
+
+getES <- function(samples, VaRValue) {
+  samples <- sort(samples)
+  len <- length(samples)
+  alpha <- round( len * (1-VaRValue) )
+  ES <- sum(samples[1:alpha])/alpha
+  return(ES)
+}
+
+VaR <- getVaR(sam,0.75)
+ES <- getES(sam,0.75)
+
+VaR
+ES
+```
+```{r test case 01}
+#test case 01
+price   <- matrix(c(10,11,10,12,9,10,12,14,18,16,10), nrow=1)
+
+GSLS(price, I0=100, V0=100, alpha=1.1, beta=0.9, gamma=1.5, K=2, r=0.0003, Imin=40)
+```
+
+```{r test case 02}
+#test case 02
+price   <- rbind( c(10,11,10,12,9,10,12,14,18,16,10), c(10,11,10,12,9,10,12,14,18,16,10) )
+
+GSLS(price, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
+```
