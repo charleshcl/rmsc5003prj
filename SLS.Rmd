@@ -6,15 +6,7 @@ output:
   html_document: default
 ---
 
-##History
-v0.9
-consolidate the GARCH model
-
-v0.8
-GSLS ok
-getVaR ok
-getES ok
-
+## Set up
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 # install.packages("quantmod")
