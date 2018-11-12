@@ -1,5 +1,5 @@
 # rmsc5003prj
-##History
+*History*
 
 v0.9
 * consolidate the GARCH model from Simon
