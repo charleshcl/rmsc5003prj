@@ -6,15 +6,15 @@ output:
   html_document: default
 ---
 
-## Set up
+## Set Up
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 # install.packages("quantmod")
 # install.packages("fGarch")
 ```
 
-## function for Generalized SLS
-```{r Generalized SLS function}
+## Helper Functions 
+```{r helper functions}
 GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
   
   ## core function begin
@@ -27,7 +27,7 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
   for (j in 1:numPath) {
     # message("j=", j)
     
-    #initialization
+    # initialization
     I   <- rep(0,T)
     IL  <- rep(0,T)
     IS  <- rep(0,T)
@@ -55,13 +55,13 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
         gS[t]  <- gS[t-1] + rho[t]*IS[t-1]
         g[t]   <- gL[t] + gS[t]
         V[t]   <- V[t-1] + g[t] - g[t-1] + r*(V[t-1]-abs(I[t-1]))
-        #message("V=", V[t])
+        # message("V=", V[t])
         if (ctrlrReset[t-1] >= Imin) {
           #normal case
           IL[t]  <- max( (1+K*rho[t])*IL[t-1], 0 )
           IS[t]  <- min( (1-beta*K*rho[t])*IS[t-1], 0 )
         } else {  
-          #controller reset
+          # controller reset
           IL[t]  <- IL[1]
           IS[t]  <- IS[1]
         }
@@ -79,12 +79,6 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
   
   return(result)
 }
-```
-
-## VaR
-```{r VaR and ES test}
-# sam <- c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20)
-# quantile(sam,probs=0.25,na.rm=TRUE)
 
 getVaR <- function(samples, VaRValue) {
   samples <- sort(samples)
@@ -101,12 +95,13 @@ getES <- function(samples, VaRValue) {
   ES <- sum(samples[1:alpha])/alpha
   return(ES)
 }
+```
 
-# VaR <- getVaR(sam,0.75)
-# ES <- getES(sam,0.75)
-# 
-# VaR
-# ES
+## Stimulation global variables
+```{r global variables}
+P = 100 # Number of Sample Path
+path = P
+T = 10  # Length of Simulated Series
 ```
 
 ## GBM stock price stimulation
@@ -130,8 +125,8 @@ mu2 = mean(S2_return, na.rm=TRUE)
 sigma2 = sd(S2_return, na.rm=TRUE)
 rho = cor(S1_return,S2_return)
 
-path = 100
-T = 10
+# path = 100
+# T = 10
 dt = 1
 time = (0:T)
 nu1 = mu1-0.5*sigma1^2
@@ -148,15 +143,13 @@ for (p in 1:path) {
     logS2[p,t+1] = logS2[p,1] + nu2*time[t+1] + sigma2*(rho*W1+sqrt(1-rho^2)*W2)
   }
 }
+
 S1_gen = exp(logS1)
 S2_gen = exp(logS2)
 
 #matplot(time,t(S1_gen),type="l")
 #matplot(time,t(S2_gen),type="l")
-```
 
-
-```{r}
 g_S1 <- GSLS(S1_gen, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
 g_S2 <- GSLS(S2_gen, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
 
@@ -173,13 +166,11 @@ sprintf("Expected Shortfall of S2=%f", ES_S2)
 ```
 
 ```{r Garch}
-#install.packages("quantmod")
-#install.packages("fGarch")
 library(quantmod)
 library(fGarch)
 ############# Parameters for Adjustment ##############
-P = 100 # Number of Sample Path
-T = 10  # Length of Simulated Series
+# P = 100 # Number of Sample Path
+# T = 10  # Length of Simulated Series
 
 ############# Download stock data and calculate log-returns ##############
 AAPL <- as.numeric(getSymbols("AAPL", from ="2015-11-09", to = "2018-11-08", auto.assign = FALSE)$AAPL.Close)
@@ -306,7 +297,6 @@ ES_AMZN <- getES(Output_AMZN,0.95)
 
 sprintf("VaR of AMZN=%f", VaR_AMZN)
 sprintf("Expected Shortfall of AMZN=%f", ES_AMZN)
-
 ```
 
 

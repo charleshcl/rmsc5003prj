@@ -28,9 +28,8 @@ plot(pressure)
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
 
 
-######## Unit Test Case ########
-
-
+## Unit Test Case 
+pre-requisite: initialize the helper functions in SLS.Rmd 
 ```{r test case 01}
 #test case 01
 price   <- matrix(c(10,11,10,12,9,10,12,14,18,16,10), nrow=1)
@@ -44,3 +43,16 @@ price   <- rbind( c(10,11,10,12,9,10,12,14,18,16,10), c(10,11,10,12,9,10,12,14,1
 
 GSLS(price, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
 ```
+
+```{r test case for VaR and ES}
+sam <- c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20)
+quantile(sam,probs=0.25,na.rm=TRUE)
+
+VaR <- getVaR(sam,0.75)
+ES <- getES(sam,0.75)
+
+VaR
+ES
+
+```
+
