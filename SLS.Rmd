@@ -99,9 +99,9 @@ getES <- function(samples, VaRValue) {
 
 ## Stimulation global variables
 ```{r global variables}
-P = 100 # Number of Sample Path
+P = 10000 # Number of Sample Path
 path = P
-T = 10  # Length of Simulated Series
+T = 30  # Length of Simulated Series
 ```
 
 ## GBM stock price stimulation
