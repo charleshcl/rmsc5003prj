@@ -95,11 +95,11 @@ getVaR <- function(samples, VaRValue) {
   return(VaR)
 }
 
-getES <- function(samples, VaRValue) {
-  samples = sort(samples)
-  len = length(samples)
+getES <- function(inSamples, VaRValue) {
+  sortedSamples = sort(inSamples)
+  len = length(sortedSamples)
   alpha = round( len * (1-VaRValue) )
-  ES = -1 * sum(samples[1:alpha])/alpha
+  ES = -1 * sum(sortedSamples[1:alpha])/alpha
   return(ES)
 }
 ```
@@ -316,7 +316,7 @@ g_AMZN <- GSLS(Output_AMZN, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0
 ```
 
 Historam on gain
-```{r}
+```{r gain}
 hist(g_S1$gain)
 hist(g_S2$gain)
 
@@ -324,7 +324,7 @@ hist(g_AAPL$gain)
 hist(g_AMZN$gain)
 ```
 
-```{r}
+```{r account value}
 hist(g_S1$acctValue)
 hist(g_S2$acctValue)
 
@@ -332,7 +332,7 @@ hist(g_AAPL$acctValue)
 hist(g_AMZN$acctValue)
 ```
 
-```{r}
+```{r VaR}
 VaR_S1 <- getVaR(g_S1$gain,0.95)
 VaR_S2 <- getVaR(g_S2$gain,0.95)
 
@@ -343,18 +343,13 @@ sprintf("VaR of AAPL=%f AMZN=%f", VaR_AAPL, VaR_AMZN)
 sprintf("VaR of S1=%f S2=%f", VaR_S1, VaR_S2)
 ```
 
-```{r}
-ES_S1 <- getES(g_S1$acctValue ,0.95)
-ES_S2 <- getES(g_S2$acctValue,0.95)
+```{r ES on gain}
+ES_S1 <- getES(g_S1$gain ,0.95)
+ES_S2 <- getES(g_S2$gain,0.95)
 
-ES_AAPL <- getES(g_AAPL$acctValue,0.95)
-ES_AMZN <- getES(g_AMZN$acctValue ,0.95)
+ES_AAPL <- getES(g_AAPL$gain,0.95)
+ES_AMZN <- getES(g_AMZN$gain ,0.95)
 
-sprintf("Expected Shortfall of AAPL=%f AMZN=%f", ES_AAPL, ES_AMZN)
 sprintf("Expected Shortfall of S1=%f S2=%f", ES_S1, ES_S2)
+sprintf("Expected Shortfall of AAPL=%f AMZN=%f", ES_AAPL, ES_AMZN)
 ```
-
-
-
-
-
