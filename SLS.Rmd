@@ -88,18 +88,18 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
 }
 
 getVaR <- function(samples, VaRValue) {
-  samples <- sort(samples)
-  len <- length(samples)
-  alpha <- round( len * (1-VaRValue) )
-  VaR <- samples[alpha]
+  samples = sort(samples)
+  len = length(samples)
+  alpha = round( len * (1-VaRValue) )
+  VaR = -1 * samples[alpha]
   return(VaR)
 }
 
 getES <- function(samples, VaRValue) {
-  samples <- sort(samples)
-  len <- length(samples)
-  alpha <- round( len * (1-VaRValue) )
-  ES <- sum(samples[1:alpha])/alpha
+  samples = sort(samples)
+  len = length(samples)
+  alpha = round( len * (1-VaRValue) )
+  ES = -1 * sum(samples[1:alpha])/alpha
   return(ES)
 }
 ```
@@ -116,7 +116,7 @@ T = 252  # Length of Simulated Series
 library(quantmod)
 
 #download stock1 price
-S1 = getSymbols("AAPL", from = "2017-11-07", auto.assign = FALSE)
+S1 = getSymbols("AAPL", from ="2015-11-09", to = "2018-11-08", auto.assign = FALSE)
 colnames(S1) = c("Open","High","Low","Close","Volume","Adjusted")
 S1_return = (S1$Close/lag(S1$Close,1)-1)[-1] 
 
@@ -124,7 +124,7 @@ mu1 = mean(S1_return, na.rm=TRUE)
 sigma1 = sd(S1_return, na.rm=TRUE)
 
 #download stock2 price
-S2 = getSymbols("AMZN", from = "2017-11-07", auto.assign = FALSE)
+S2 = getSymbols("AMZN", from ="2015-11-09", to = "2018-11-08", auto.assign = FALSE)
 colnames(S2) = c("Open","High","Low","Close","Volume","Adjusted")
 S2_return = (S2$Close/lag(S2$Close,1)-1)[-1]
 
@@ -157,28 +157,30 @@ S2_gen = exp(logS2)
 #matplot(time,t(S1_gen),type="l")
 #matplot(time,t(S2_gen),type="l")
 
-ten_days=10
+# ten_days=10
 
-S1_gen_10days = S1_gen[,-( (ten_days+1) :T)]
-S2_gen_10days = S2_gen[,-( (ten_days+1) :T)]
-
-g_S1 <- GSLS(S1_gen_10days, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
-g_S2 <- GSLS(S2_gen_10days, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
-
-VaR_S1 <- getVaR(g_S1$gain,0.95)
-ES_S1 <- getES(g_S1$gain,0.95)
-hist(g_S1$gain)
-hist(g_S1$acctValue)
-
-VaR_S2 <- getVaR(g_S2$gain,0.95)
-ES_S2 <- getES(g_S2$gain,0.95)
-hist(g_S2$gain)
-hist(g_S1$acctValue)
-
-sprintf("VaR of S1=%f", VaR_S1)
-sprintf("Expected Shortfall of S1=%f", ES_S1)
-sprintf("VaR of S2=%f", VaR_S2)
-sprintf("Expected Shortfall of S2=%f", ES_S2)
+# S1_gen_10days = S1_gen[,-( (ten_days+1) :T)]
+# S2_gen_10days = S2_gen[,-( (ten_days+1) :T)]
+# 
+# g_S1 <- GSLS(S1_gen_10days, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
+# g_S2 <- GSLS(S2_gen_10days, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
+# 
+# VaR_S1 <- getVaR(g_S1$gain,0.95)
+# ES_S1 <- getES(g_S1$gain,0.95)
+# hist(S1_gen)
+# hist(g_S1$gain)
+# hist(g_S1$acctValue)
+# 
+# VaR_S2 <- getVaR(g_S2$gain,0.95)
+# ES_S2 <- getES(g_S2$gain,0.95)
+# hist(S2_gen)
+# hist(g_S2$gain)
+# hist(g_S1$acctValue)
+# 
+# sprintf("VaR of S1=%f", VaR_S1)
+# sprintf("Expected Shortfall of S1=%f", ES_S1)
+# sprintf("VaR of S2=%f", VaR_S2)
+# sprintf("Expected Shortfall of S2=%f", ES_S2)
 ```
 
 ```{r Garch}
@@ -263,11 +265,6 @@ Output_AAPL <- t(sapply(1:P, Sim_AAPL))
 
 Sim_AAPL
 
-VaR_AAPL <- getVaR(Output_AAPL,0.95)
-ES_AAPL <- getES(Output_AAPL,0.95)
-
-sprintf("VaR of AAPL=%f", VaR_AAPL)
-sprintf("Expected Shortfall of AAPL=%f", ES_AAPL)
 
 #### AMZN
 
@@ -307,12 +304,57 @@ Sim_AMZN_trial <- function(rept){
 par(mfrow=c(1,1))
 Output_AMZN <- t(sapply((1:P), Sim_AMZN_trial))
   #plot.zoo(Output_AMZN,plot.type="single")
-
-VaR_AMZN <- getVaR(Output_AMZN,0.95)
-ES_AMZN <- getES(Output_AMZN,0.95)
-
-sprintf("VaR of AMZN=%f", VaR_AMZN)
-sprintf("Expected Shortfall of AMZN=%f", ES_AMZN)
 ```
+
+Running GSLS
+```{r running_gsls}
+g_S1 <- GSLS(S1_gen, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
+g_S2 <- GSLS(S2_gen, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
+
+g_AAPL <- GSLS(Output_AAPL, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
+g_AMZN <- GSLS(Output_AMZN, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
+```
+
+Historam on gain
+```{r}
+hist(g_S1$gain)
+hist(g_S2$gain)
+
+hist(g_AAPL$gain)
+hist(g_AMZN$gain)
+```
+
+```{r}
+hist(g_S1$acctValue)
+hist(g_S2$acctValue)
+
+hist(g_AAPL$acctValue)
+hist(g_AMZN$acctValue)
+```
+
+```{r}
+VaR_S1 <- getVaR(g_S1$gain,0.95)
+VaR_S2 <- getVaR(g_S2$gain,0.95)
+
+VaR_AAPL <- getVaR(g_AAPL$gain,0.95)
+VaR_AMZN <- getVaR(g_AMZN$gain,0.95)
+
+sprintf("VaR of AAPL=%f AMZN=%f", VaR_AAPL, VaR_AMZN)
+sprintf("VaR of S1=%f S2=%f", VaR_S1, VaR_S2)
+```
+
+```{r}
+ES_S1 <- getES(g_S1$acctValue ,0.95)
+ES_S2 <- getES(g_S2$acctValue,0.95)
+
+ES_AAPL <- getES(g_AAPL$acctValue,0.95)
+ES_AMZN <- getES(g_AMZN$acctValue ,0.95)
+
+sprintf("Expected Shortfall of AAPL=%f AMZN=%f", ES_AAPL, ES_AMZN)
+sprintf("Expected Shortfall of S1=%f S2=%f", ES_S1, ES_S2)
+```
+
+
+
 
 
