@@ -15,6 +15,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Helper Functions 
 ```{r helper functions}
+# input parameter
+## price: n by t matrix; n number of paths, with t time period
 GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
   
   ## core function begin
@@ -22,8 +24,10 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
   T   <- ncol(price)
 
   ## result is an 1 x numPath vector of gain at terminal T
-  result <- rep(0,numPath)
-  
+  gResult = rep(0,numPath)
+  vResult = rep(0,numPath)
+  # message("gResult=",gResult)
+    
   for (j in 1:numPath) {
     # message("j=", j)
     
@@ -74,8 +78,11 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
       # message("    gL[t]=",gL[t])
     }
 
-    result[j]=g[T]
+    gResult[j] = g[T]
+    vResult[j] = V[T]
   }
+  
+  result = data.frame(gain = gResult, acctValue = vResult)
   
   return(result)
 }
