@@ -199,8 +199,8 @@ AAPL_Return <- R[,1]
 AMZN_Return <- R[,2]
 # Plot returns
 par(mfrow=c(2,1))
-plot(R[,1],type="l",xlab="Time",ylab = "AAPL", main="Log-returns for AAPL") # Plot log-return series to visualize heteroskedsticity
-plot(R[,2],type="l",xlab="Time",ylab = "AMZN",  main="Log-returns for AMZN")
+plot(AAPL_Return ,type="l",xlab="Time",ylab = "AAPL", main="Log-returns for AAPL") # Plot log-return series to visualize heteroskedsticity
+plot(AMZN_Return,type="l",xlab="Time",ylab = "AMZN",  main="Log-returns for AMZN")
 
 # Plot acf & pacf
 acf(AAPL_Return)
@@ -215,7 +215,7 @@ pacf(AMZN_Return^2)
 NormModel_1 <- vector("list", 6)
 NormModel_2 <- vector("list", 6)
 
-############# GARCH Model with normal innovations ###################
+############# Fit GARCH Model with normal innovations ###################
 
 NormModel_1[[1]] <- garchFit(formula ~ garch(1,0),data = AAPL_Return) 
 NormModel_1[[2]] <- garchFit(formula ~ garch(1,1),data = AAPL_Return) 
@@ -233,11 +233,11 @@ NormModel_2[[7]] <- garchFit(formula ~ garch(2,3),data = AMZN_Return)
 NormModel_2[[8]] <- garchFit(formula ~ garch(3,2),data = AMZN_Return)
 
 BIC1 <- as.numeric(sapply(1:6, function(i){NormModel_1[[i]]@fit$ics[2]}))
-BIC2 <- as.numeric(sapply(1:6, function(i){NormModel_2[[i]]@fit$ics[2]}))
+BIC2 <- as.numeric(sapply(1:8, function(i){NormModel_2[[i]]@fit$ics[2]}))
 #tModel_1 <- garchFit(formula ~ garch(1,1),data = R[,1],cond.dist = "std",include.shape = F, shape  = 4)
 #tModel_2 <- garchFit(formula ~ garch(1,1),data = R[,2],cond.dist = "std",include.shape = F, shape = 4)
 NormModel_AAPL <- NormModel_1[[which.min(BIC1)]]
-NormModel_AMZN <- NormModel_2[[which.min(BIC2)]]
+NormModel_AMZN <- NormModel_2[[2]]
 mu_AAPL <- NormModel_AAPL@fit$coef[1]
 Gcoef_AAPL <- NormModel_AAPL@fit$coef[-1]
 mu_AMZN <- NormModel_AMZN@fit$coef[1]
@@ -247,24 +247,23 @@ Gcoef_AMZN <- NormModel_AMZN@fit$coef[-1]
 ###  AAPL
 
 Sim_AAPL <- function(rept){
-    Sim_AAPL_return <- as.numeric(rep(mu_AAPL, T+1))
+  #set.seed(rept)
+    Sim_AAPL_return_base <- as.numeric(rep(mu_AAPL, T+1))
     Sim_AAPL_residual <- rep(residuals(NormModel_AAPL)[length(AAPL_Return)], T+1)
     Sim_AAPL_sigma2 <- rep(volatility(NormModel_AAPL,type = "h")[length(AAPL_Return)], T+1)
-    for (i in 2:T+1){
+    for (i in 2:(T+1)){
+      #message("i=",i)
       temp <- c(1,Sim_AAPL_residual[i-1]^2,Sim_AAPL_sigma2[i-1])
       Sim_AAPL_sigma2[i] <- t(temp) %*% Gcoef_AAPL
-      Sim_AAPL_residual[i] <- rnorm(n=1,mean = 0,sd = Sim_AAPL_sigma2[i]^(0.5))
+      Sim_AAPL_residual[i] <- sqrt(Sim_AAPL_sigma2[i]) * rnorm(1)
     }
-    Sim_AAPL_return <- Sim_AAPL_return + Sim_AAPL_residual
+    Sim_AAPL_return <- Sim_AAPL_return_base + Sim_AAPL_residual
     Sim_AAPL_return[1] <- 0 ## This is artifically designed to make Sim_AAPL = the current price of AAPL
     Sim_AAPL <- as.numeric(exp(cumsum(Sim_AAPL_return)) * AAPL[length(AAPL)])
 }
 par(mfrow=c(1,1))
 Output_AAPL <- t(sapply(1:P, Sim_AAPL))
-#plot.zoo(Output_AAPL,plot.type="single")
-
-Sim_AAPL
-
+#plot.zoo(t(Output_AAPL),plot.type="single")
 
 #### AMZN
 
@@ -275,7 +274,7 @@ Sim_AMZN <- function(rept){
   Sim_AMZN_residual[1] <- residuals(NormModel_AMZN)[length(AMZN_Return)-1]
   Sim_AMZN_sigma2 <- rep(volatility(NormModel_AMZN,type = "h")[length(AMZN_Return)], T+2)
   Sim_AMZN_sigma2[1] <- volatility(NormModel_AMZN,type = "h")[length(AMZN_Return)-1]
-  for (i in 3:T+2){
+  for (i in 3:(T+2)){
     temp <- c(1,Sim_AMZN_residual[i-1]^2,Sim_AMZN_residual[i-2]^2,Sim_AMZN_sigma2[i-1],Sim_AMZN_sigma2[i-2])
     Sim_AMZN_sigma2[i] <- t(temp) %*% Gcoef_AMZN
     Sim_AMZN_residual[i] <- rnorm(n=1,mean = 0,sd = Sim_AMZN_sigma2[i]^(0.5))
@@ -284,26 +283,27 @@ Sim_AMZN <- function(rept){
   Sim_AMZN_return[1] <- 0
   Sim_AMZN <- as.numeric(exp(cumsum(Sim_AMZN_return)) * AMZN[length(AMZN)])
 }
-
 Sim_AMZN_trial <- function(rept){
   #set.seed(rept)
-  Sim_AMZN_return <- as.numeric(rep(2.579723e-03, T+2))
-  Sim_AMZN_residual <- rep(residuals(NormModel_AMZN)[length(AMZN_Return)], T+2)
+  Sim_AMZN_return <- as.numeric(rep(mu_AMZN, T+1))
+  Sim_AMZN_residual <- rep(residuals(NormModel_AMZN)[length(AMZN_Return)], T+1)
   Sim_AMZN_residual[1] <- residuals(NormModel_AMZN)[length(AMZN_Return)-1]
-  Sim_AMZN_sigma2 <- rep(volatility(NormModel_AMZN,type = "h")[length(AMZN_Return)], T+2)
+  Sim_AMZN_sigma2 <- rep(volatility(NormModel_AMZN,type = "h")[length(AMZN_Return)], T+1)
   Sim_AMZN_sigma2[1] <- volatility(NormModel_AMZN,type = "h")[length(AMZN_Return)-1]
-  for (i in 3:T+2){
-    temp <- c(1,Sim_AMZN_residual[i-1]^2,Sim_AMZN_residual[i-2]^2,Sim_AMZN_sigma2[i-1],Sim_AMZN_sigma2[i-2])
-    Sim_AMZN_sigma2[i] <- t(temp) %*% c(2.795238e-05,2.003230e-01, 0, 7.280811e-01,0)
+  for (i in 2:(T+1)){
+    temp <- c(1,Sim_AMZN_residual[i-1]^2,Sim_AMZN_sigma2[i-1])
+    Sim_AMZN_sigma2[i] <- t(temp) %*% Gcoef_AMZN
     Sim_AMZN_residual[i] <- rnorm(n=1,mean = 0,sd = Sim_AMZN_sigma2[i]^(0.5))
   }
-  Sim_AMZN_return <- (Sim_AMZN_return + Sim_AMZN_residual)[-1]
+  Sim_AMZN_return <- (Sim_AMZN_return + Sim_AMZN_residual)
   Sim_AMZN_return[1] <- 0
   Sim_AMZN <- as.numeric(exp(cumsum(Sim_AMZN_return)) * AMZN[length(AMZN)])
+  Sim_AMZN
 }
 par(mfrow=c(1,1))
 Output_AMZN <- t(sapply((1:P), Sim_AMZN_trial))
-  #plot.zoo(Output_AMZN,plot.type="single")
+#Output_AMZN <- t(sapply((1:P), Sim_AMZN))
+plot.zoo(t(Output_AMZN),plot.type="single")
 ```
 
 Running GSLS
@@ -339,8 +339,8 @@ VaR_S2 <- getVaR(g_S2$gain,0.95)
 VaR_AAPL <- getVaR(g_AAPL$gain,0.95)
 VaR_AMZN <- getVaR(g_AMZN$gain,0.95)
 
-sprintf("VaR of S1=%f S2=%f", VaR_S1, VaR_S2)
-sprintf("VaR of AAPL=%f AMZN=%f", VaR_AAPL, VaR_AMZN)
+sprintf("VaR of   S1=%8.4f   S2=%8.4f", VaR_S1, VaR_S2)
+sprintf("VaR of AAPL=%8.4f AMZN=%8.4f", VaR_AAPL, VaR_AMZN)
 ```
 
 ```{r ES on gain}
@@ -350,6 +350,6 @@ ES_S2 <- getES(g_S2$gain,0.95)
 ES_AAPL <- getES(g_AAPL$gain,0.95)
 ES_AMZN <- getES(g_AMZN$gain ,0.95)
 
-sprintf("Expected Shortfall of S1=%f S2=%f", ES_S1, ES_S2)
-sprintf("Expected Shortfall of AAPL=%f AMZN=%f", ES_AAPL, ES_AMZN)
+sprintf("Expected Shortfall of   S1=%8.4f    S2=%8.4f", ES_S1, ES_S2)
+sprintf("Expected Shortfall of AAPL=%8.4f  AMZN=%8.4f", ES_AAPL, ES_AMZN)
 ```
