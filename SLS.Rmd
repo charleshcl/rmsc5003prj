@@ -8,7 +8,7 @@ output:
 
 ## Set Up
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+#knitr::opts_chunk$set(echo = TRUE)
 # install.packages("quantmod")
 # install.packages("fGarch")
 ```
@@ -144,10 +144,10 @@ logS2 = matrix( as.numeric(log(S2[nrow(S2),"Close"])), nrow=path, ncol=T+1)
 
 for (p in 1:path) {
   for (t in 1:T) {
-    W1 = rnorm(1,0,1)*sqrt(t+1)
-    W2 = rnorm(1,0,1)*sqrt(t+1)
-    logS1[p,t+1] = logS1[p,1] + nu1*time[t+1] + sigma1*W1
-    logS2[p,t+1] = logS2[p,1] + nu2*time[t+1] + sigma2*(rho*W1+sqrt(1-rho^2)*W2)
+    W1 = rnorm(1,0,1)
+    W2 = rnorm(1,0,1)
+    logS1[p,t+1] = logS1[p,t] + nu1 + sigma1*W1
+    logS2[p,t+1] = logS2[p,t] + nu2 + sigma2*(rho*W1+sqrt(1-rho^2)*W2)
   }
 }
 
@@ -184,7 +184,7 @@ S2_gen = exp(logS2)
 ```
 
 ```{r Garch}
-library(quantmod)
+#library(quantmod)
 library(fGarch)
 ############# Parameters for Adjustment ##############
 # P = 100 # Number of Sample Path
