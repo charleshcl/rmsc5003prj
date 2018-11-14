@@ -108,7 +108,7 @@ getES <- function(samples, VaRValue) {
 ```{r global variables}
 P = 10000 # Number of Sample Path
 path = P
-T = 30  # Length of Simulated Series
+T = 252  # Length of Simulated Series
 ```
 
 ## GBM stock price stimulation
@@ -157,14 +157,23 @@ S2_gen = exp(logS2)
 #matplot(time,t(S1_gen),type="l")
 #matplot(time,t(S2_gen),type="l")
 
-g_S1 <- GSLS(S1_gen, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
-g_S2 <- GSLS(S2_gen, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
+ten_days=10
 
-VaR_S1 <- getVaR(g_S1,0.95)
-ES_S1 <- getES(g_S1,0.95)
+S1_gen_10days = S1_gen[,-( (ten_days+1) :T)]
+S2_gen_10days = S2_gen[,-( (ten_days+1) :T)]
 
-VaR_S2 <- getVaR(g_S2,0.95)
-ES_S2 <- getES(g_S2,0.95)
+g_S1 <- GSLS(S1_gen_10days, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
+g_S2 <- GSLS(S2_gen_10days, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
+
+VaR_S1 <- getVaR(g_S1$gain,0.95)
+ES_S1 <- getES(g_S1$gain,0.95)
+hist(g_S1$gain)
+hist(g_S1$acctValue)
+
+VaR_S2 <- getVaR(g_S2$gain,0.95)
+ES_S2 <- getES(g_S2$gain,0.95)
+hist(g_S2$gain)
+hist(g_S1$acctValue)
 
 sprintf("VaR of S1=%f", VaR_S1)
 sprintf("Expected Shortfall of S1=%f", ES_S1)
