@@ -3,7 +3,7 @@
 library(quantmod)
 library(fGarch)
 ############# Parameters for Adjustment ##############
-P = 1000 # Number of Sample Path
+P = 100000 # Number of Sample Path
 T = 252  # Length of Simulated Series
 
 ############# Download stock data and calculate log-returns ##############
@@ -79,27 +79,12 @@ Sim_AAPL <- function(rept){
 }
 par(mfrow=c(1,1))
 Output_AAPL <- t(sapply(1:P, Sim_AAPL))
-#plot.zoo(t(Output_AAPL),plot.type="single")
+plot.zoo(t(Output_AAPL),plot.type="single")
 
 #### AMZN
 
+
 Sim_AMZN <- function(rept){
-  set.seed(rept)
-  Sim_AMZN_return <- as.numeric(rep(mu_AMZN, T+2))
-  Sim_AMZN_residual <- rep(residuals(NormModel_AMZN)[length(AMZN_Return)], T+2)
-  Sim_AMZN_residual[1] <- residuals(NormModel_AMZN)[length(AMZN_Return)-1]
-  Sim_AMZN_sigma2 <- rep(volatility(NormModel_AMZN,type = "h")[length(AMZN_Return)], T+2)
-  Sim_AMZN_sigma2[1] <- volatility(NormModel_AMZN,type = "h")[length(AMZN_Return)-1]
-  for (i in 3:(T+2)){
-    temp <- c(1,Sim_AMZN_residual[i-1]^2,Sim_AMZN_residual[i-2]^2,Sim_AMZN_sigma2[i-1],Sim_AMZN_sigma2[i-2])
-    Sim_AMZN_sigma2[i] <- t(temp) %*% Gcoef_AMZN
-    Sim_AMZN_residual[i] <- rnorm(n=1,mean = 0,sd = Sim_AMZN_sigma2[i]^(0.5))
-  }
-  Sim_AMZN_return <- (Sim_AMZN_return + Sim_AMZN_residual)[-1]
-  Sim_AMZN_return[1] <- 0
-  Sim_AMZN <- as.numeric(exp(cumsum(Sim_AMZN_return)) * AMZN[length(AMZN)])
-}
-Sim_AMZN_trial <- function(rept){
   #set.seed(rept)
   Sim_AMZN_return <- as.numeric(rep(mu_AMZN, T+1))
   Sim_AMZN_residual <- rep(residuals(NormModel_AMZN)[length(AMZN_Return)], T+1)
@@ -109,7 +94,7 @@ Sim_AMZN_trial <- function(rept){
   for (i in 2:(T+1)){
     temp <- c(1,Sim_AMZN_residual[i-1]^2,Sim_AMZN_sigma2[i-1])
     Sim_AMZN_sigma2[i] <- t(temp) %*% Gcoef_AMZN
-    Sim_AMZN_residual[i] <- rnorm(n=1,mean = 0,sd = Sim_AMZN_sigma2[i]^(0.5))
+    Sim_AMZN_residual[i] <- sqrt(Sim_AMZN_sigma2[i]) * rnorm(1)
   }
   Sim_AMZN_return <- (Sim_AMZN_return + Sim_AMZN_residual)
   Sim_AMZN_return[1] <- 0
@@ -117,6 +102,6 @@ Sim_AMZN_trial <- function(rept){
   Sim_AMZN
 }
 par(mfrow=c(1,1))
-Output_AMZN <- t(sapply((1:P), Sim_AMZN_trial))
-#Output_AMZN <- t(sapply((1:P), Sim_AMZN))
+
+Output_AMZN <- t(sapply((1:P), Sim_AMZN))
 plot.zoo(t(Output_AMZN),plot.type="single")
