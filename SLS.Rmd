@@ -342,54 +342,7 @@ for (rept in 1:P){
 ```
 
 
-Running GSLS
-```{r running_gsls}
-g_S1 <- GSLS(S1_gen, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
-g_S2 <- GSLS(S2_gen, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
-
-g_AAPL <- GSLS(Output_AAPL, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
-g_AMZN <- GSLS(Output_AMZN, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
-```
-
-Historam on gain
-```{r gain}
-hist(g_S1$gain)
-hist(g_S2$gain)
-
-hist(g_AAPL$gain)
-hist(g_AMZN$gain)
-```
-
-```{r account value}
-hist(g_S1$acctValue)
-hist(g_S2$acctValue)
-
-hist(g_AAPL$acctValue)
-hist(g_AMZN$acctValue)
-```
-
-```{r VaR}
-VaR_S1 <- getVaR(g_S1$gain,0.95)
-VaR_S2 <- getVaR(g_S2$gain,0.95)
-
-VaR_AAPL <- getVaR(g_AAPL$gain,0.95)
-VaR_AMZN <- getVaR(g_AMZN$gain,0.95)
-
-sprintf("VaR of AAPL=%f AMZN=%f", VaR_AAPL, VaR_AMZN)
-sprintf("VaR of S1=%f S2=%f", VaR_S1, VaR_S2)
-```
-
-```{r ES on gain}
-ES_S1 <- getES(g_S1$gain ,0.95)
-ES_S2 <- getES(g_S2$gain,0.95)
-
-ES_AAPL <- getES(g_AAPL$gain,0.95)
-ES_AMZN <- getES(g_AMZN$gain ,0.95)
-
-sprintf("Expected Shortfall of S1=%f S2=%f", ES_S1, ES_S2)
-sprintf("Expected Shortfall of AAPL=%f AMZN=%f", ES_AAPL, ES_AMZN)
-```
-```{r}
+```{r data for analysis}
 reportRec <- data.frame(alpha=double(),
                         beta=double(),
                         K=double(),

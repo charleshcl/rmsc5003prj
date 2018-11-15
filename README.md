@@ -6,5 +6,6 @@ Helper functions
 * Simulation - GARCH model
 * getVaR()
 * getES()
-* generating data for different alpha, beta and feedback gain
 
+Case Execution
+* generating data for different alpha, beta and feedback gain
