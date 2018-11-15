@@ -11,6 +11,10 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 # install.packages("quantmod")
 # install.packages("fGarch")
+# install.packages("MTS")
+# install.packages("expm")
+# install.packages("MASS")
+# install.packages("zoo")
 ```
 
 ## Helper Functions 
@@ -106,7 +110,8 @@ getES <- function(inSamples, VaRValue) {
 
 ## Stimulation global variables
 ```{r global variables}
-P = 100000 # Number of Sample Path
+# P = 100000 # Number of Sample Path
+P = 100 # Number of Sample Path
 path = P
 T = 252  # Length of Simulated Series
 ```
