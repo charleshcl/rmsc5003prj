@@ -110,8 +110,8 @@ getES <- function(inSamples, VaRValue) {
 
 ## Stimulation global variables
 ```{r global variables}
-# P = 100000 # Number of Sample Path
-P = 100 # Number of Sample Path
+P = 100000 # Number of Sample Path
+# P = 1000 # Number of Sample Path
 path = P
 T = 252  # Length of Simulated Series
 ```
@@ -380,14 +380,19 @@ for (a in seq(from=0.5, to=1.5, by=0.5)) {
       
       g_AAPL <- GSLS(Output_AAPL, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
       g_AMZN <- GSLS(Output_AMZN, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
+
+      g_BEKK_AAPL <- GSLS(Output_BEKK_AAPL, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
+      g_BEKK_AMZN <- GSLS(Output_BEKK_AMZN, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
       
+            
       VaR_S1   <- getVaR(g_S1$gain, VaR_level)
       VaR_S2   <- getVaR(g_S2$gain, VaR_level)
       VaR_S1S2 <- getVaR(g_S1$gain+g_S2$gain, VaR_level)
       
       VaR_AAPL     <- getVaR(g_AAPL$gain, VaR_level)
       VaR_AMZN     <- getVaR(g_AMZN$gain, VaR_level)
-      VaR_AAPLAMZN <- getVaR(g_AAPL$gain+g_AMZN$gain, VaR_level)
+      # VaR_AAPLAMZN <- getVaR(g_AAPL$gain+g_AMZN$gain, VaR_level)
+      VaR_AAPLAMZN <- getVaR(g_BEKK_AAPL$gain+g_BEKK_AMZN$gain, VaR_level)
 
       ES_S1   <- getES(g_S1$gain, VaR_level)
       ES_S2   <- getES(g_S2$gain, VaR_level)
@@ -395,7 +400,8 @@ for (a in seq(from=0.5, to=1.5, by=0.5)) {
       
       ES_AAPL     <- getES(g_AAPL$gain, VaR_level)
       ES_AMZN     <- getES(g_AMZN$gain, VaR_level)
-      ES_AAPLAMZN <- getVaR(g_AAPL$gain+g_AMZN$gain, VaR_level)
+      # ES_AAPLAMZN <- getVaR(g_AAPL$gain+g_AMZN$gain, VaR_level)
+      ES_AAPLAMZN <- getVaR(g_BEKK_AAPL$gain+g_BEKK_AMZN$gain, VaR_level)
 
       reportCurrRec <- data.frame(alpha=a,
                         beta=b,
