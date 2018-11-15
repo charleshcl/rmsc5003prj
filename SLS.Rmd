@@ -106,7 +106,7 @@ getES <- function(inSamples, VaRValue) {
 
 ## Stimulation global variables
 ```{r global variables}
-P = 1000 # Number of Sample Path
+P = 3000 # Number of Sample Path
 path = P
 T = 252  # Length of Simulated Series
 ```
@@ -353,3 +353,80 @@ ES_AMZN <- getES(g_AMZN$gain ,0.95)
 sprintf("Expected Shortfall of   S1=%8.4f    S2=%8.4f", ES_S1, ES_S2)
 sprintf("Expected Shortfall of AAPL=%8.4f  AMZN=%8.4f", ES_AAPL, ES_AMZN)
 ```
+```{r}
+reportRec <- data.frame(alpha=double(),
+                        beta=double(),
+                        K=double(),
+                        VaR_GBM_S1=double(), 
+                        VaR_GBM_S2=double(), 
+                        VaR_GBM_PTFL=double(), 
+                        VaR_GARCH_S1=double(), 
+                        VaR_GARCH_S2=double(), 
+                        VaR_GARCH_PTFL=double(), 
+                        ES_GBM_S1=double(), 
+                        ES_GBM_S2=double(), 
+                        ES_GBM_PTFL=double(), 
+                        ES_GARCH_S1=double(), 
+                        ES_GARCH_S2=double(), 
+                        ES_GARCH_PTFL=double()
+                        )
+
+dailyRiskFeeRate = 0.0003
+I_min=40
+g=1.5
+I_0=100
+V_0=100
+VaR_level=0.95
+
+for (a in seq(from=0.5, to=1.5, by=0.5)) {
+  for (b in seq(from=0.5, to=1.5, by=0.5)) {
+    for (k in seq(from=1, to=3, by=1)) {
+      g_S1 <- GSLS(S1_gen, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
+      g_S2 <- GSLS(S2_gen, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
+      
+      g_AAPL <- GSLS(Output_AAPL, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
+      g_AMZN <- GSLS(Output_AMZN, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
+      
+      VaR_S1   <- getVaR(g_S1$gain, VaR_level)
+      VaR_S2   <- getVaR(g_S2$gain, VaR_level)
+      VaR_S1S2 <- getVaR(g_S1$gain+g_S2$gain, VaR_level)
+      
+      VaR_AAPL     <- getVaR(g_AAPL$gain, VaR_level)
+      VaR_AMZN     <- getVaR(g_AMZN$gain, VaR_level)
+      VaR_AAPLAMZN <- getVaR(g_AAPL$gain+g_AMZN$gain, VaR_level)
+
+      ES_S1   <- getES(g_S1$gain, VaR_level)
+      ES_S2   <- getES(g_S2$gain, VaR_level)
+      ES_S1S2 <- getVaR(g_S1$gain+g_S2$gain, VaR_level)
+      
+      ES_AAPL     <- getES(g_AAPL$gain, VaR_level)
+      ES_AMZN     <- getES(g_AMZN$gain, VaR_level)
+      ES_AAPLAMZN <- getVaR(g_AAPL$gain+g_AMZN$gain, VaR_level)
+
+      reportCurrRec <- data.frame(alpha=a,
+                        beta=b,
+                        K=k,
+                        VaR_GBM_S1=VaR_S1, 
+                        VaR_GBM_S2=VaR_S2, 
+                        VaR_GBM_PTFL=VaR_S1S2, 
+                        VaR_GARCH_S1=VaR_AAPL, 
+                        VaR_GARCH_S2=VaR_AMZN, 
+                        VaR_GARCH_PTFL=VaR_AAPLAMZN, 
+                        ES_GBM_S1=ES_S1, 
+                        ES_GBM_S2=ES_S2, 
+                        ES_GBM_PTFL=ES_S1S2, 
+                        ES_GARCH_S1=ES_AAPL, 
+                        ES_GARCH_S2=ES_AMZN, 
+                        ES_GARCH_PTFL=ES_AAPLAMZN
+                        )
+      reportRec <- rbind(reportRec, reportCurrRec)
+    }
+  }
+}
+
+reportRec
+
+# setwd("C:/Documents and Settings/Data")
+write.csv(reportRec,'reportRec.csv')
+```
+
