@@ -21,6 +21,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r helper functions}
 # input parameter
 ## price: n by t matrix; n number of paths, with t time period
+## price must be 252 days
 GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
   
   ## core function begin
@@ -28,7 +29,9 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
   T   <- ncol(price)
 
   ## result is an 1 x numPath vector of gain at terminal T
-  gResult = rep(0,numPath)
+  g10dayResult = rep(0,numPath)
+  g30dayResult = rep(0,numPath)
+  g1yearResult = rep(0,numPath)
   vResult = rep(0,numPath)
   # message("gResult=",gResult)
     
@@ -76,17 +79,18 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
         I[t]   <- min( IL[t]+abs(IS[t]), gamma*V[t-1] )
         ctrlrReset[t] <- min( IL[t], abs(IS[t]) )
       }
-      # message("    price[t]=",price[t])
-      # message("    rho[t]=",rho[t])
-      # message("    IL[t]=",IL[t])
-      # message("    gL[t]=",gL[t])
     }
 
-    gResult[j] = g[T]
+    g10dayResult[j] = g[10]
+    g30dayResult[j] = g[30]
+    g1yearResult[j] = g[T]
     vResult[j] = V[T]
   }
   
-  result = data.frame(gain = gResult, acctValue = vResult)
+  result = data.frame(gain10day = g10dayResult, 
+                      gain30day = g30dayResult, 
+                      gain1year = g1yearResult, 
+                      acctValue = vResult)
   
   return(result)
 }
@@ -110,7 +114,7 @@ getES <- function(inSamples, VaRValue) {
 
 ## Stimulation global variables
 ```{r global variables}
-P = 100000 # Number of Sample Path
+P = 100 # Number of Sample Path
 # P = 1000 # Number of Sample Path
 path = P
 T = 252  # Length of Simulated Series
@@ -161,31 +165,6 @@ S2_gen = exp(logS2)
 
 #matplot(time,t(S1_gen),type="l")
 #matplot(time,t(S2_gen),type="l")
-
-# ten_days=10
-
-# S1_gen_10days = S1_gen[,-( (ten_days+1) :T)]
-# S2_gen_10days = S2_gen[,-( (ten_days+1) :T)]
-# 
-# g_S1 <- GSLS(S1_gen_10days, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
-# g_S2 <- GSLS(S2_gen_10days, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
-# 
-# VaR_S1 <- getVaR(g_S1$gain,0.95)
-# ES_S1 <- getES(g_S1$gain,0.95)
-# hist(S1_gen)
-# hist(g_S1$gain)
-# hist(g_S1$acctValue)
-# 
-# VaR_S2 <- getVaR(g_S2$gain,0.95)
-# ES_S2 <- getES(g_S2$gain,0.95)
-# hist(S2_gen)
-# hist(g_S2$gain)
-# hist(g_S1$acctValue)
-# 
-# sprintf("VaR of S1=%f", VaR_S1)
-# sprintf("Expected Shortfall of S1=%f", ES_S1)
-# sprintf("VaR of S2=%f", VaR_S2)
-# sprintf("Expected Shortfall of S2=%f", ES_S2)
 ```
 
 ```{r Garch}
@@ -306,7 +285,7 @@ library(expm)
 library(MASS)
 library(zoo)
 # Fit BEKK model (bivariate GARCH Model) use log return
-#M2 <- BEKK11(R) # R is the 757 * 2 log-returns from independent GARCH
+# M2 <- BEKK11(R) # R is the 757 * 2 log-returns from independent GARCH
 
 # Extract coefficients/parameters in BEKK model and store them in vectors/matrices
 mu <- M2$estimates[1:2]
@@ -366,11 +345,12 @@ reportRec <- data.frame(alpha=double(),
                         )
 
 dailyRiskFeeRate = 0.0003
-I_min=40
-g=1.5
-I_0=100
-V_0=100
-VaR_level=0.95
+I_min = 400000
+g     = 1.5
+I_0   = 1000000
+V_0   = 1000000
+VaR95pct = 0.95
+VaR99pct = 0.99
 
 for (a in seq(from=0.5, to=1.5, by=0.5)) {
   for (b in seq(from=0.5, to=1.5, by=0.5)) {
@@ -383,41 +363,22 @@ for (a in seq(from=0.5, to=1.5, by=0.5)) {
 
       g_BEKK_AAPL <- GSLS(Output_BEKK_AAPL, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
       g_BEKK_AMZN <- GSLS(Output_BEKK_AMZN, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
-      
-            
-      VaR_S1   <- getVaR(g_S1$gain, VaR_level)
-      VaR_S2   <- getVaR(g_S2$gain, VaR_level)
-      VaR_S1S2 <- getVaR(g_S1$gain+g_S2$gain, VaR_level)
-      
-      VaR_AAPL     <- getVaR(g_AAPL$gain, VaR_level)
-      VaR_AMZN     <- getVaR(g_AMZN$gain, VaR_level)
-      # VaR_AAPLAMZN <- getVaR(g_AAPL$gain+g_AMZN$gain, VaR_level)
-      VaR_AAPLAMZN <- getVaR(g_BEKK_AAPL$gain+g_BEKK_AMZN$gain, VaR_level)
-
-      ES_S1   <- getES(g_S1$gain, VaR_level)
-      ES_S2   <- getES(g_S2$gain, VaR_level)
-      ES_S1S2 <- getVaR(g_S1$gain+g_S2$gain, VaR_level)
-      
-      ES_AAPL     <- getES(g_AAPL$gain, VaR_level)
-      ES_AMZN     <- getES(g_AMZN$gain, VaR_level)
-      # ES_AAPLAMZN <- getVaR(g_AAPL$gain+g_AMZN$gain, VaR_level)
-      ES_AAPLAMZN <- getVaR(g_BEKK_AAPL$gain+g_BEKK_AMZN$gain, VaR_level)
 
       reportCurrRec <- data.frame(alpha=a,
                         beta=b,
                         K=k,
-                        VaR_GBM_S1=VaR_S1, 
-                        VaR_GBM_S2=VaR_S2, 
-                        VaR_GBM_PTFL=VaR_S1S2, 
-                        VaR_GARCH_S1=VaR_AAPL, 
-                        VaR_GARCH_S2=VaR_AMZN, 
-                        VaR_GARCH_PTFL=VaR_AAPLAMZN, 
-                        ES_GBM_S1=ES_S1, 
-                        ES_GBM_S2=ES_S2, 
-                        ES_GBM_PTFL=ES_S1S2, 
-                        ES_GARCH_S1=ES_AAPL, 
-                        ES_GARCH_S2=ES_AMZN, 
-                        ES_GARCH_PTFL=ES_AAPLAMZN
+                        VaR_GBM_S1= getVaR(g_S1$gain1year, VaR95pct), 
+                        VaR_GBM_S2=getVaR(g_S2$gain1year, VaR95pct), 
+                        VaR_GBM_PTFL=getVaR(g_S1$gain1year+g_S2$gain1year, VaR95pct), 
+                        VaR_GARCH_S1=getVaR(g_AAPL$gain1year, VaR95pct), 
+                        VaR_GARCH_S2=getVaR(g_AMZN$gain1year, VaR95pct), 
+                        VaR_GARCH_PTFL=getVaR(g_BEKK_AAPL$gain1year+g_BEKK_AMZN$gain1year, VaR95pct), 
+                        ES_GBM_S1=getES(g_S1$gain1year, VaR95pct), 
+                        ES_GBM_S2=getES(g_S2$gain1year, VaR95pct), 
+                        ES_GBM_PTFL=getVaR(g_S1$gain1year+g_S2$gain1year, VaR95pct), 
+                        ES_GARCH_S1=getES(g_AAPL$gain1year, VaR95pct), 
+                        ES_GARCH_S2=getES(g_AMZN$gain1year, VaR95pct), 
+                        ES_GARCH_PTFL=getVaR(g_BEKK_AAPL$gain1year+g_BEKK_AMZN$gain1year, VaR95pct)
                         )
       reportRec <- rbind(reportRec, reportCurrRec)
     }

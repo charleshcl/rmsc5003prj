@@ -7,32 +7,15 @@ output: word_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
-```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
-
-
 ## Unit Test Case 
 pre-requisite: initialize the helper functions in SLS.Rmd 
 ```{r test case 01}
 #test case 01
 price   <- matrix(c(10,11,10,12,9,10,12,14,18,16,10), nrow=1)
+
+GSLS(price, I0=100, V0=100, alpha=1.1, beta=0.9, gamma=1.5, K=2, r=0.0003, Imin=40)
+
+price   <- matrix(c(10,11,10,12,9,10,12,14,18,16,10,11,10,12,9,10,12,14,18,16,10,11,10,12,9,10,12,14,18,16), nrow=1)
 
 GSLS(price, I0=100, V0=100, alpha=1.1, beta=0.9, gamma=1.5, K=2, r=0.0003, Imin=40)
 ```
@@ -67,11 +50,11 @@ g_AMZN <- GSLS(Output_AMZN, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0
 
 Historam on gain
 ```{r gain}
-hist(g_S1$gain)
-hist(g_S2$gain)
+hist(g_S1$gain10day)
+hist(g_S2$gain10day)
 
-hist(g_AAPL$gain)
-hist(g_AMZN$gain)
+hist(g_AAPL$gain10day)
+hist(g_AMZN$gain10day)
 ```
 
 ```{r account value}
@@ -83,23 +66,39 @@ hist(g_AMZN$acctValue)
 ```
 
 ```{r VaR}
-VaR_S1 <- getVaR(g_S1$gain,0.95)
-VaR_S2 <- getVaR(g_S2$gain,0.95)
+VaR_S1 <- getVaR(g_S1$gain10day,0.95)
+VaR_S2 <- getVaR(g_S2$gain10day,0.95)
 
-VaR_AAPL <- getVaR(g_AAPL$gain,0.95)
-VaR_AMZN <- getVaR(g_AMZN$gain,0.95)
+VaR_AAPL <- getVaR(g_AAPL$gain10day,0.95)
+VaR_AMZN <- getVaR(g_AMZN$gain10day,0.95)
 
 sprintf("VaR of AAPL=%f AMZN=%f", VaR_AAPL, VaR_AMZN)
 sprintf("VaR of S1=%f S2=%f", VaR_S1, VaR_S2)
 ```
 
 ```{r ES on gain}
-ES_S1 <- getES(g_S1$gain ,0.95)
-ES_S2 <- getES(g_S2$gain,0.95)
+ES_S1 <- getES(g_S1$gain10day ,0.95)
+ES_S2 <- getES(g_S2$gain10day,0.95)
 
-ES_AAPL <- getES(g_AAPL$gain,0.95)
-ES_AMZN <- getES(g_AMZN$gain ,0.95)
+ES_AAPL <- getES(g_AAPL$gain10day,0.95)
+ES_AMZN <- getES(g_AMZN$gain10day ,0.95)
 
 sprintf("Expected Shortfall of S1=%f S2=%f", ES_S1, ES_S2)
 sprintf("Expected Shortfall of AAPL=%f AMZN=%f", ES_AAPL, ES_AMZN)
 ```
+
+```{r VaR}
+                        VaR_GBM_S1= getVaR(g_S1$gain1year, VaR95pct)
+                        VaR_GBM_S2=getVaR(g_S2$gain1year, VaR95pct)
+                        VaR_GBM_PTFL=getVaR(g_S1$gain1year+g_S2$gain1year, VaR95pct)
+                        VaR_GARCH_S1=getVaR(g_AAPL$gain1year, VaR95pct)
+                        VaR_GARCH_S2=getVaR(g_AMZN$gain1year, VaR95pct)
+                        VaR_GARCH_PTFL=getVaR(g_BEKK_AAPL$gain1year+g_BEKK_AMZN$gain1year, VaR95pct) 
+                        ES_GBM_S1=getES(g_S1$gain1year, VaR95pct)
+                        ES_GBM_S2=getES(g_S2$gain1year, VaR95pct) 
+                        ES_GBM_PTFL=getVaR(g_S1$gain1year+g_S2$gain1year, VaR95pct)
+                        ES_GARCH_S1=getES(g_AAPL$gain1year, VaR95pct)
+                        ES_GARCH_S2=getES(g_AMZN$gain1year, VaR95pct) 
+                        ES_GARCH_PTFL=getVaR(g_BEKK_AAPL$gain1year+g_BEKK_AMZN$gain1year, VaR95pct)
+```
+
