@@ -17,27 +17,42 @@ knitr::opts_chunk$set(echo = TRUE)
 # install.packages("zoo")
 ```
 
+## Global variables
+```{r global variables}
+P = 1000 # Number of Sample Path
+# P = 10000 # Number of Sample Path
+path = P
+T = 252  # Length of Simulated Series
+
+# parameters
+dailyRiskFeeRate = 0.026/360 #daily rate
+I_min = 400000
+g     = 1.5
+I_0   = 1000000
+V_0   = 2000000
+I_min = 1000000 * 0.4
+VaR99pct = 0.99
+```
+
 ## Helper Functions 
 ```{r helper functions}
 # input parameter
-## price: n by t matrix; n number of paths, with t time period
-## price must be 252 days
+## price: n by t matrix
+##   n: number of paths
+##   t: must be 252 days, which is one year trading days
 GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
   
   ## core function begin
-  numPath <- nrow(price)
-  T   <- ncol(price)
+  numPath = nrow(price)
+  T       = ncol(price)   #expected 252
 
   ## result is an 1 x numPath vector of gain at terminal T
-  g10dayResult = rep(0,numPath)
-  g30dayResult = rep(0,numPath)
+  g3mthsResult = rep(0,numPath)
+  v3mthsResult = rep(0,numPath)
   g1yearResult = rep(0,numPath)
-  vResult = rep(0,numPath)
-  # message("gResult=",gResult)
-    
+  v1yearResult = rep(0,numPath)
+
   for (j in 1:numPath) {
-    # message("j=", j)
-    
     # initialization
     I   <- rep(0,T)
     IL  <- rep(0,T)
@@ -81,16 +96,18 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
       }
     }
 
-    g10dayResult[j] = g[10]
-    g30dayResult[j] = g[30]
+    g3mthsResult[j] = g[63]
+    v3mthsResult[j] = V[63]
     g1yearResult[j] = g[T]
-    vResult[j] = V[T]
+    v1yearResult[j] = V[T]
   }
   
-  result = data.frame(gain10day = g10dayResult, 
-                      gain30day = g30dayResult, 
-                      gain1year = g1yearResult, 
-                      acctValue = vResult)
+  result = data.frame(gain3mths    = g3mthsResult, 
+                      acctVal3mths = v3mthsResult, 
+                      return3mths  = (v3mthsResult-V_0)/V_0, 
+                      gain1year    = g1yearResult, 
+                      acctVal1year = v1yearResult,
+                      return1year  = v1yearResult)
   
   return(result)
 }
@@ -112,20 +129,12 @@ getES <- function(inSamples, VaRValue) {
 }
 ```
 
-## Stimulation global variables
-```{r global variables}
-P = 100 # Number of Sample Path
-# P = 1000 # Number of Sample Path
-path = P
-T = 252  # Length of Simulated Series
-```
-
 ## GBM stock price stimulation
 ```{r gbm}
 library(quantmod)
 
 #download stock1 price
-S1 = getSymbols("AAPL", from ="2015-11-09", to = "2018-11-08", auto.assign = FALSE)
+S1 = getSymbols("AAPL", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)
 colnames(S1) = c("Open","High","Low","Close","Volume","Adjusted")
 S1_return = (S1$Close/lag(S1$Close,1)-1)[-1] 
 
@@ -133,7 +142,7 @@ mu1 = mean(S1_return, na.rm=TRUE)
 sigma1 = sd(S1_return, na.rm=TRUE)
 
 #download stock2 price
-S2 = getSymbols("AMZN", from ="2015-11-09", to = "2018-11-08", auto.assign = FALSE)
+S2 = getSymbols("AMZN", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)
 colnames(S2) = c("Open","High","Low","Close","Volume","Adjusted")
 S2_return = (S2$Close/lag(S2$Close,1)-1)[-1]
 
@@ -148,15 +157,15 @@ time = (0:T)
 nu1 = mu1-0.5*sigma1^2
 nu2 = mu2-0.5*sigma2^2
 
-logS1 = matrix( as.numeric(log(S1[nrow(S1),"Close"])), nrow=path, ncol=T+1)	# n paths log price, col 1=last closing$
-logS2 = matrix( as.numeric(log(S2[nrow(S2),"Close"])), nrow=path, ncol=T+1)	
+logS1 = matrix( as.numeric(log(S1[nrow(S1),"Close"])), nrow=path, ncol=T+1 )	# n paths log price, col 1=last closing$
+logS2 = matrix( as.numeric(log(S2[nrow(S2),"Close"])), nrow=path, ncol=T+1 )	
 
 for (p in 1:path) {
   for (t in 1:T) {
     W1 = rnorm(1,0,1)
     W2 = rnorm(1,0,1)
-    logS1[p,t+1] = logS1[p,t] + nu1 + sigma1*W1
-    logS2[p,t+1] = logS2[p,t] + nu2 + sigma2*(rho*W1+sqrt(1-rho^2)*W2)
+    logS1[p, t+1] = logS1[p,t] + nu1 + sigma1*W1
+    logS2[p, t+1] = logS2[p,t] + nu2 + sigma2*(rho*W1+sqrt(1-rho^2)*W2)
   }
 }
 
@@ -178,8 +187,8 @@ library(fGarch)
 # T = 10  # Length of Simulated Series
 
 ############# Download stock data and calculate log-returns ##############
-AAPL <- as.numeric(getSymbols("AAPL", from ="2015-11-10", to = "2018-11-12", auto.assign = FALSE)$AAPL.Close)
-AMZN <- as.numeric(getSymbols("AMZN", from ="2015-11-10", to = "2018-11-12", auto.assign = FALSE)$AMZN.Close)
+AAPL <- as.numeric(getSymbols("AAPL", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)$AAPL.Close)
+AMZN <- as.numeric(getSymbols("AMZN", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)$AMZN.Close)
 
 # Calculation Log-returns
 Data <- cbind(AAPL, AMZN)
@@ -188,8 +197,8 @@ AAPL_Return <- R[,1]
 AMZN_Return <- R[,2]
 # Plot returns
 par(mfrow=c(2,1))
-plot(AAPL_Return ,type="l",xlab="Time",ylab = "AAPL", main="Log-returns for AAPL") # Plot log-return series to visualize heteroskedsticity
-plot(AMZN_Return,type="l",xlab="Time",ylab = "AMZN",  main="Log-returns for AMZN")
+plot(AAPL_Return,type="l", xlab="Time", ylab = "AAPL", main="Log-returns for AAPL") # Plot log-return series to visualize heteroskedsticity
+plot(AMZN_Return,type="l", xlab="Time", ylab = "AMZN", main="Log-returns for AMZN")
 
 # Plot acf & pacf for return and squared return
 acf(AAPL_Return)
@@ -336,35 +345,38 @@ write.csv(Output_BEKK_AMZN,'Output_BEKK_AMZN.csv')
 
 
 ```{r data for analysis}
-reportRec <- data.frame(alpha=double(),
+simulatedResults <- data.frame(alpha=double(),
                         beta=double(),
                         K=double(),
-                        VaR_GBM_S1=double(), 
-                        VaR_GBM_S2=double(), 
-                        VaR_GBM_PTFL=double(), 
-                        VaR_GARCH_S1=double(), 
-                        VaR_GARCH_S2=double(), 
-                        VaR_GARCH_PTFL=double(), 
-                        ES_GBM_S1=double(), 
-                        ES_GBM_S2=double(), 
-                        ES_GBM_PTFL=double(), 
-                        ES_GARCH_S1=double(), 
-                        ES_GARCH_S2=double(), 
-                        ES_GARCH_PTFL=double()
+                        VaR99_1year_GBM_S1=double(), 
+                        VaR99_1year_GBM_S2=double(), 
+                        VaR99_1year_GBM_PTFL=double(), 
+                        VaR99_1year_GARCH_S1=double(), 
+                        VaR99_1year_GARCH_S2=double(), 
+                        VaR99_1year_GARCH_PTFL=double(), 
+                        ES99_1year_GBM_S1=double(), 
+                        ES99_1year_GBM_S2=double(), 
+                        ES99_1year_GBM_PTFL=double(), 
+                        ES99_1year_GARCH_S1=double(), 
+                        ES99_1year_GARCH_S2=double(), 
+                        ES99_1year_GARCH_PTFL=double(),
+                        VaR99_3mths_GBM_S1=double(), 
+                        VaR99_3mths_GBM_S2=double(), 
+                        VaR99_3mths_GBM_PTFL=double(), 
+                        VaR99_3mths_GARCH_S1=double(), 
+                        VaR99_3mths_GARCH_S2=double(), 
+                        VaR99_3mths_GARCH_PTFL=double(), 
+                        ES99_3mths_GBM_S1=double(), 
+                        ES99_3mths_GBM_S2=double(), 
+                        ES99_3mths_GBM_PTFL=double(), 
+                        ES99_3mths_GARCH_S1=double(), 
+                        ES99_3mths_GARCH_S2=double(), 
+                        ES99_3mths_GARCH_PTFL=double()
                         )
 
-# parameters
-dailyRiskFeeRate = 0.026/360 #daily rate
-I_min = 400000
-g     = 1.5
-I_0   = 1000000
-V_0   = 2000000
-I_min = 1000000 * 0.4
-VaR99pct = 0.99
-
-for (a in seq(from=0.5, to=1.5, by=0.5)) {
-  for (b in seq(from=0.5, to=1.5, by=0.5)) {
-    for (k in seq(from=1, to=3, by=1)) {
+for (a in seq(from=0.5, to=0.5, by=0.5)) {
+  for (b in seq(from=0.5, to=0.5, by=0.5)) {
+    for (k in seq(from=1, to=1, by=1)) {
       g_S1 <- GSLS(S1_gen, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
       g_S2 <- GSLS(S2_gen, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
       
@@ -377,40 +389,47 @@ for (a in seq(from=0.5, to=1.5, by=0.5)) {
       # GBM_ptfl_gain = g_S1$gain1year+g_S2$gain1year
       # GARCH_ptfl_gain = g_BEKK_AAPL$gain1year+g_BEKK_AMZN$gain1year
       
-      hist(g_S1$gain1year+g_S2$gain1year, main=paste("Histogram of GBM Histogram: alpha =", a, " beta =", b, " K=", k))
-      hist(g_BEKK_AAPL$gain1year+g_BEKK_AMZN$gain1year, main=paste("Histogram of GARCH Histogram: alpha =", a, " beta =", b, " K=", k))
+      hist(g_S1$return1year+g_S2$return1year, main=paste("Histogram of GBM Histogram: alpha =", a, " beta =", b, " K=", k))
+      hist(g_BEKK_AAPL$return1year+g_BEKK_AMZN$return1year, main=paste("Histogram of GARCH Histogram: alpha =", a, " beta =", b, " K=", k))
 
       reportCurrRec <- data.frame(alpha=a,
                         beta=b,
                         K=k,
-                        VaR_GBM_S1= getVaR(g_S1$gain1year, VaR99pct), 
-                        VaR_GBM_S2=getVaR(g_S2$gain1year, VaR99pct), 
-                        VaR_GBM_PTFL=getVaR(g_S1$gain1year+g_S2$gain1year, VaR99pct), 
-                        VaR_GARCH_S1=getVaR(g_AAPL$gain1year, VaR99pct), 
-                        VaR_GARCH_S2=getVaR(g_AMZN$gain1year, VaR99pct), 
-                        VaR_GARCH_PTFL=getVaR(g_BEKK_AAPL$gain1year+g_BEKK_AMZN$gain1year, VaR99pct), 
-                        ES_GBM_S1=getES(g_S1$gain1year, VaR99pct), 
-                        ES_GBM_S2=getES(g_S2$gain1year, VaR99pct), 
-                        ES_GBM_PTFL=getVaR(g_S1$gain1year+g_S2$gain1year, VaR99pct), 
-                        ES_GARCH_S1=getES(g_AAPL$gain1year, VaR99pct), 
-                        ES_GARCH_S2=getES(g_AMZN$gain1year, VaR99pct), 
-                        ES_GARCH_PTFL=getVaR(g_BEKK_AAPL$gain1year+g_BEKK_AMZN$gain1year, VaR99pct)
+                        ### 3 mths
+                        VaR99_3mths_GBM_S1= getVaR(g_S1$return3mths, VaR99pct), 
+                        VaR99_3mths_GBM_S2=getVaR(g_S2$return3mths, VaR99pct), 
+                        VaR99_3mths_GBM_PTFL=getVaR(g_S1$return3mths+g_S2$return3mths, VaR99pct), 
+                        VaR99_3mths_GARCH_S1=getVaR(g_AAPL$return3mths, VaR99pct), 
+                        VaR99_3mths_GARCH_S2=getVaR(g_AMZN$return3mths, VaR99pct), 
+                        VaR99_3mths_GARCH_PTFL=getVaR(g_BEKK_AAPL$return3mths+g_BEKK_AMZN$return3mths, VaR99pct), 
+                        ES99_3mths_GBM_S1=getES(g_S1$return3mths, VaR99pct), 
+                        ES99_3mths_GBM_S2=getES(g_S2$return3mths, VaR99pct), 
+                        ES99_3mths_GBM_PTFL=getVaR(g_S1$return3mths+g_S2$return3mths, VaR99pct), 
+                        ES99_3mths_GARCH_S1=getES(g_AAPL$return3mths, VaR99pct), 
+                        ES99_3mths_GARCH_S2=getES(g_AMZN$return3mths, VaR99pct), 
+                        ES99_3mths_GARCH_PTFL=getVaR(g_BEKK_AAPL$return3mths+g_BEKK_AMZN$return3mths, VaR99pct),
+                        ### 1 year
+                        VaR99_1year_GBM_S1= getVaR(g_S1$return1year, VaR99pct), 
+                        VaR99_1year_GBM_S2=getVaR(g_S2$return1year, VaR99pct), 
+                        VaR99_1year_GBM_PTFL=getVaR(g_S1$return1year+g_S2$return1year, VaR99pct), 
+                        VaR99_1year_GARCH_S1=getVaR(g_AAPL$return1year, VaR99pct), 
+                        VaR99_1year_GARCH_S2=getVaR(g_AMZN$return1year, VaR99pct), 
+                        VaR99_1year_GARCH_PTFL=getVaR(g_BEKK_AAPL$return1year+g_BEKK_AMZN$return1year, VaR99pct), 
+                        ES99_1year_GBM_S1=getES(g_S1$return1year, VaR99pct), 
+                        ES99_1year_GBM_S2=getES(g_S2$return1year, VaR99pct), 
+                        ES99_1year_GBM_PTFL=getVaR(g_S1$return1year+g_S2$return1year, VaR99pct), 
+                        ES99_1year_GARCH_S1=getES(g_AAPL$return1year, VaR99pct), 
+                        ES99_1year_GARCH_S2=getES(g_AMZN$return1year, VaR99pct), 
+                        ES99_1year_GARCH_PTFL=getVaR(g_BEKK_AAPL$return1year+g_BEKK_AMZN$return1year, VaR99pct)
                         )
-      reportRec <- rbind(reportRec, reportCurrRec)
+      simulatedResults <- rbind(simulatedResults, reportCurrRec)
     }
   }
 }
 
-# reportRec
-
 # setwd("C:/Documents and Settings/Data")
-write.csv(reportRec,'reportRec.csv')
+write.csv(simulatedResults,'simulatedResults.csv')
 ```
 
-```{r}
 
-
-
-
-```
 
