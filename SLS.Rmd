@@ -378,8 +378,8 @@ simulatedResults <- data.frame(alpha=double(),
 time3m = (1:T_3m)
 time1y = (1:T_1y)
 
-for (a in seq(from=0.5, to=0.5, by=0.5)) {
-  for (b in seq(from=0.5, to=0.5, by=0.5)) {
+for (a in seq(from=0.5, to=1.5, by=0.5)) {
+  for (b in seq(from=0.5, to=1.5, by=0.5)) {
     for (k in seq(from=1, to=1, by=1)) {
       # for simplicity, we set V_0 and I_0 for both stocks to be the same, for ease of computing porfolio return
       # rs stands for result set
