@@ -107,7 +107,7 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
                       return3mths  = (v3mthsResult-V_0)/V_0, 
                       gain1year    = g1yearResult, 
                       acctVal1year = v1yearResult,
-                      return1year  = v1yearResult)
+                      return1year  = (v1yearResult-V_0)/V_0)
   
   return(result)
 }
