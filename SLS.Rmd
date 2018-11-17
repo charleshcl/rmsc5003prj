@@ -301,7 +301,7 @@ library(expm)
 library(MASS)
 library(zoo)
 # Fit BEKK model (bivariate GARCH Model) use log return
-# M2 <- BEKK11(R) # R is the 757 * 2 log-returns from independent GARCH
+M2 <- BEKK11(R) # R is the 757 * 2 log-returns from independent GARCH
 
 # Extract coefficients/parameters in BEKK model and store them in vectors/matrices
 mu <- M2$estimates[1:2]
@@ -375,6 +375,9 @@ simulatedResults <- data.frame(alpha=double(),
                         ES99_3m_GARCH_PTFL=double()
                         )
 
+time3m = (1:T_3m)
+time1y = (1:T_1y)
+
 for (a in seq(from=0.5, to=0.5, by=0.5)) {
   for (b in seq(from=0.5, to=0.5, by=0.5)) {
     for (k in seq(from=1, to=1, by=1)) {
@@ -391,6 +394,8 @@ for (a in seq(from=0.5, to=0.5, by=0.5)) {
 
       hist(rsS1$return1y+rsS2$return1y, main=paste("Histogram of GBM Histogram: alpha =", a, " beta =", b, " K=", k))
       hist(rsBEKK_AAPL$return1y+rsBEKK_AMZN$return1y, main=paste("Histogram of GARCH Histogram: alpha =", a, " beta =", b, " K=", k))
+      
+      # matplot(time1y,t(mean(rsS1$return1y+rsS2$return1y)),type="l")
 
       stimulatedRec <- data.frame(alpha=a,
                         beta=b,
