@@ -23,15 +23,16 @@ P = 1000 # Number of Sample Path
 # P = 10000 # Number of Sample Path
 path = P
 T = 252  # Length of Simulated Series
+T_1y = 252
+T_3m = 63 # T_1y / 4
 
 # parameters
 dailyRiskFeeRate = 0.026/360 #daily rate
-I_min = 400000
 g     = 1.5
 I_0   = 1000000
 V_0   = 2000000
-I_min = 1000000 * 0.4
-VaR99pct = 0.99
+I_min = 1000000 * 0.4   # 40% of initial investment level
+pct99 = 0.99
 ```
 
 ## Helper Functions 
@@ -47,10 +48,10 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
   T       = ncol(price)   #expected 252
 
   ## result is an 1 x numPath vector of gain at terminal T
-  g3mthsResult = rep(0,numPath)
-  v3mthsResult = rep(0,numPath)
-  g1yearResult = rep(0,numPath)
-  v1yearResult = rep(0,numPath)
+  g3mResult = rep(0,numPath)
+  v3mResult = rep(0,numPath)
+  g1yResult = rep(0,numPath)
+  v1yResult = rep(0,numPath)
 
   for (j in 1:numPath) {
     # initialization
@@ -96,18 +97,18 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
       }
     }
 
-    g3mthsResult[j] = g[63]
-    v3mthsResult[j] = V[63]
-    g1yearResult[j] = g[T]
-    v1yearResult[j] = V[T]
+    g3mResult[j] = g[T_3m]
+    v3mResult[j] = V[T_3m]
+    g1yResult[j] = g[T]
+    v1yResult[j] = V[T]
   }
   
-  result = data.frame(gain3mths    = g3mthsResult, 
-                      acctVal3mths = v3mthsResult, 
-                      return3mths  = (v3mthsResult-V_0)/V_0, 
-                      gain1year    = g1yearResult, 
-                      acctVal1year = v1yearResult,
-                      return1year  = (v1yearResult-V_0)/V_0)
+  result = data.frame(gain3m    = g3mResult, 
+                      acctVal3m = v3mResult, 
+                      return3m  = (v3mResult-V_0)/V_0, 
+                      gain1y    = g1yResult, 
+                      acctVal1y = v1yResult,
+                      return1y  = (v1yResult-V_0)/V_0)
   
   return(result)
 }
@@ -348,81 +349,80 @@ write.csv(Output_BEKK_AMZN,'Output_BEKK_AMZN.csv')
 simulatedResults <- data.frame(alpha=double(),
                         beta=double(),
                         K=double(),
-                        VaR99_1year_GBM_S1=double(), 
-                        VaR99_1year_GBM_S2=double(), 
-                        VaR99_1year_GBM_PTFL=double(), 
-                        VaR99_1year_GARCH_S1=double(), 
-                        VaR99_1year_GARCH_S2=double(), 
-                        VaR99_1year_GARCH_PTFL=double(), 
-                        ES99_1year_GBM_S1=double(), 
-                        ES99_1year_GBM_S2=double(), 
-                        ES99_1year_GBM_PTFL=double(), 
-                        ES99_1year_GARCH_S1=double(), 
-                        ES99_1year_GARCH_S2=double(), 
-                        ES99_1year_GARCH_PTFL=double(),
-                        VaR99_3mths_GBM_S1=double(), 
-                        VaR99_3mths_GBM_S2=double(), 
-                        VaR99_3mths_GBM_PTFL=double(), 
-                        VaR99_3mths_GARCH_S1=double(), 
-                        VaR99_3mths_GARCH_S2=double(), 
-                        VaR99_3mths_GARCH_PTFL=double(), 
-                        ES99_3mths_GBM_S1=double(), 
-                        ES99_3mths_GBM_S2=double(), 
-                        ES99_3mths_GBM_PTFL=double(), 
-                        ES99_3mths_GARCH_S1=double(), 
-                        ES99_3mths_GARCH_S2=double(), 
-                        ES99_3mths_GARCH_PTFL=double()
+                        VaR99_1y_GBM_S1=double(), 
+                        VaR99_1y_GBM_S2=double(), 
+                        VaR99_1y_GBM_PTFL=double(), 
+                        VaR99_1y_GARCH_S1=double(), 
+                        VaR99_1y_GARCH_S2=double(), 
+                        VaR99_1y_GARCH_PTFL=double(), 
+                        ES99_1y_GBM_S1=double(), 
+                        ES99_1y_GBM_S2=double(), 
+                        ES99_1y_GBM_PTFL=double(), 
+                        ES99_1y_GARCH_S1=double(), 
+                        ES99_1y_GARCH_S2=double(), 
+                        ES99_1y_GARCH_PTFL=double(),
+                        VaR99_3m_GBM_S1=double(), 
+                        VaR99_3m_GBM_S2=double(), 
+                        VaR99_3m_GBM_PTFL=double(), 
+                        VaR99_3m_GARCH_S1=double(), 
+                        VaR99_3m_GARCH_S2=double(), 
+                        VaR99_3m_GARCH_PTFL=double(), 
+                        ES99_3m_GBM_S1=double(), 
+                        ES99_3m_GBM_S2=double(), 
+                        ES99_3m_GBM_PTFL=double(), 
+                        ES99_3m_GARCH_S1=double(), 
+                        ES99_3m_GARCH_S2=double(), 
+                        ES99_3m_GARCH_PTFL=double()
                         )
 
 for (a in seq(from=0.5, to=0.5, by=0.5)) {
   for (b in seq(from=0.5, to=0.5, by=0.5)) {
     for (k in seq(from=1, to=1, by=1)) {
-      g_S1 <- GSLS(S1_gen, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
-      g_S2 <- GSLS(S2_gen, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
+      # for simplicity, we set V_0 and I_0 for both stocks to be the same, for ease of computing porfolio return
+      # rs stands for result set
+      rsS1 <- GSLS(S1_gen, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
+      rsS2 <- GSLS(S2_gen, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
       
-      g_AAPL <- GSLS(Output_AAPL, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
-      g_AMZN <- GSLS(Output_AMZN, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
+      rsAAPL <- GSLS(Output_AAPL, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
+      rsAMZN <- GSLS(Output_AMZN, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
 
-      g_BEKK_AAPL <- GSLS(Output_BEKK_AAPL, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
-      g_BEKK_AMZN <- GSLS(Output_BEKK_AMZN, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
+      rsBEKK_AAPL <- GSLS(Output_BEKK_AAPL, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
+      rsBEKK_AMZN <- GSLS(Output_BEKK_AMZN, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
 
-      # GBM_ptfl_gain = g_S1$gain1year+g_S2$gain1year
-      # GARCH_ptfl_gain = g_BEKK_AAPL$gain1year+g_BEKK_AMZN$gain1year
-      
-      hist(g_S1$return1year+g_S2$return1year, main=paste("Histogram of GBM Histogram: alpha =", a, " beta =", b, " K=", k))
-      hist(g_BEKK_AAPL$return1year+g_BEKK_AMZN$return1year, main=paste("Histogram of GARCH Histogram: alpha =", a, " beta =", b, " K=", k))
+      hist(rsS1$return1y+rsS2$return1y, main=paste("Histogram of GBM Histogram: alpha =", a, " beta =", b, " K=", k))
+      hist(rsBEKK_AAPL$return1y+rsBEKK_AMZN$return1y, main=paste("Histogram of GARCH Histogram: alpha =", a, " beta =", b, " K=", k))
 
-      reportCurrRec <- data.frame(alpha=a,
+      stimulatedRec <- data.frame(alpha=a,
                         beta=b,
                         K=k,
                         ### 3 mths
-                        VaR99_3mths_GBM_S1= getVaR(g_S1$return3mths, VaR99pct), 
-                        VaR99_3mths_GBM_S2=getVaR(g_S2$return3mths, VaR99pct), 
-                        VaR99_3mths_GBM_PTFL=getVaR(g_S1$return3mths+g_S2$return3mths, VaR99pct), 
-                        VaR99_3mths_GARCH_S1=getVaR(g_AAPL$return3mths, VaR99pct), 
-                        VaR99_3mths_GARCH_S2=getVaR(g_AMZN$return3mths, VaR99pct), 
-                        VaR99_3mths_GARCH_PTFL=getVaR(g_BEKK_AAPL$return3mths+g_BEKK_AMZN$return3mths, VaR99pct), 
-                        ES99_3mths_GBM_S1=getES(g_S1$return3mths, VaR99pct), 
-                        ES99_3mths_GBM_S2=getES(g_S2$return3mths, VaR99pct), 
-                        ES99_3mths_GBM_PTFL=getVaR(g_S1$return3mths+g_S2$return3mths, VaR99pct), 
-                        ES99_3mths_GARCH_S1=getES(g_AAPL$return3mths, VaR99pct), 
-                        ES99_3mths_GARCH_S2=getES(g_AMZN$return3mths, VaR99pct), 
-                        ES99_3mths_GARCH_PTFL=getVaR(g_BEKK_AAPL$return3mths+g_BEKK_AMZN$return3mths, VaR99pct),
+                        VaR99_3m_GBM_S1= getVaR(rsS1$return3m, pct99), 
+                        VaR99_3m_GBM_S2=getVaR(rsS2$return3m, pct99), 
+                        VaR99_3m_GBM_PTFL=getVaR(rsS1$return3m+rsS2$return3m, pct99), 
+                        VaR99_3m_GARCH_S1=getVaR(rsAAPL$return3m, pct99), 
+                        VaR99_3m_GARCH_S2=getVaR(rsAMZN$return3m, pct99), 
+                        VaR99_3m_GARCH_PTFL=getVaR(rsBEKK_AAPL$return3m+rsBEKK_AMZN$return3m, pct99), 
+                        ES99_3m_GBM_S1=getES(rsS1$return3m, pct99), 
+                        ES99_3m_GBM_S2=getES(rsS2$return3m, pct99), 
+                        ES99_3m_GBM_PTFL=getVaR(rsS1$return3m+rsS2$return3m, pct99), 
+                        ES99_3m_GARCH_S1=getES(rsAAPL$return3m, pct99), 
+                        ES99_3m_GARCH_S2=getES(rsAMZN$return3m, pct99), 
+                        ES99_3m_GARCH_PTFL=getVaR(rsBEKK_AAPL$return3m+rsBEKK_AMZN$return3m, pct99),
                         ### 1 year
-                        VaR99_1year_GBM_S1= getVaR(g_S1$return1year, VaR99pct), 
-                        VaR99_1year_GBM_S2=getVaR(g_S2$return1year, VaR99pct), 
-                        VaR99_1year_GBM_PTFL=getVaR(g_S1$return1year+g_S2$return1year, VaR99pct), 
-                        VaR99_1year_GARCH_S1=getVaR(g_AAPL$return1year, VaR99pct), 
-                        VaR99_1year_GARCH_S2=getVaR(g_AMZN$return1year, VaR99pct), 
-                        VaR99_1year_GARCH_PTFL=getVaR(g_BEKK_AAPL$return1year+g_BEKK_AMZN$return1year, VaR99pct), 
-                        ES99_1year_GBM_S1=getES(g_S1$return1year, VaR99pct), 
-                        ES99_1year_GBM_S2=getES(g_S2$return1year, VaR99pct), 
-                        ES99_1year_GBM_PTFL=getVaR(g_S1$return1year+g_S2$return1year, VaR99pct), 
-                        ES99_1year_GARCH_S1=getES(g_AAPL$return1year, VaR99pct), 
-                        ES99_1year_GARCH_S2=getES(g_AMZN$return1year, VaR99pct), 
-                        ES99_1year_GARCH_PTFL=getVaR(g_BEKK_AAPL$return1year+g_BEKK_AMZN$return1year, VaR99pct)
+                        VaR99_1y_GBM_S1= getVaR(rsS1$return1y, pct99), 
+                        VaR99_1y_GBM_S2=getVaR(rsS2$return1y, pct99), 
+                        VaR99_1y_GBM_PTFL=getVaR(rsS1$return1y+rsS2$return1y, pct99), 
+                        VaR99_1y_GARCH_S1=getVaR(rsAAPL$return1y, pct99), 
+                        VaR99_1y_GARCH_S2=getVaR(rsAMZN$return1y, pct99), 
+                        VaR99_1y_GARCH_PTFL=getVaR(rsBEKK_AAPL$return1y+rsBEKK_AMZN$return1y, pct99), 
+                        ES99_1y_GBM_S1=getES(rsS1$return1y, pct99), 
+                        ES99_1y_GBM_S2=getES(rsS2$return1y, pct99), 
+                        ES99_1y_GBM_PTFL=getVaR(rsS1$return1y+rsS2$return1y, pct99), 
+                        ES99_1y_GARCH_S1=getES(rsAAPL$return1y, pct99), 
+                        ES99_1y_GARCH_S2=getES(rsAMZN$return1y, pct99), 
+                        ES99_1y_GARCH_PTFL=getVaR(rsBEKK_AAPL$return1y+rsBEKK_AMZN$return1y, pct99)
                         )
-      simulatedResults <- rbind(simulatedResults, reportCurrRec)
+      simulatedResults <- rbind(simulatedResults, stimulatedRec)
     }
   }
 }
