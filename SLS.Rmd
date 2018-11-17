@@ -353,12 +353,13 @@ reportRec <- data.frame(alpha=double(),
                         ES_GARCH_PTFL=double()
                         )
 
-dailyRiskFeeRate = 0.0003
+# parameters
+dailyRiskFeeRate = 0.026/360 #daily rate
 I_min = 400000
 g     = 1.5
 I_0   = 1000000
-V_0   = 1000000
-VaR95pct = 0.95
+V_0   = 2000000
+I_min = 1000000 * 0.4
 VaR99pct = 0.99
 
 for (a in seq(from=0.5, to=1.5, by=0.5)) {
@@ -373,30 +374,43 @@ for (a in seq(from=0.5, to=1.5, by=0.5)) {
       g_BEKK_AAPL <- GSLS(Output_BEKK_AAPL, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
       g_BEKK_AMZN <- GSLS(Output_BEKK_AMZN, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
 
+      # GBM_ptfl_gain = g_S1$gain1year+g_S2$gain1year
+      # GARCH_ptfl_gain = g_BEKK_AAPL$gain1year+g_BEKK_AMZN$gain1year
+      
+      hist(g_S1$gain1year+g_S2$gain1year, main=paste("Histogram of GBM Histogram: alpha =", a, " beta =", b, " K=", k))
+      hist(g_BEKK_AAPL$gain1year+g_BEKK_AMZN$gain1year, main=paste("Histogram of GARCH Histogram: alpha =", a, " beta =", b, " K=", k))
+
       reportCurrRec <- data.frame(alpha=a,
                         beta=b,
                         K=k,
-                        VaR_GBM_S1= getVaR(g_S1$gain1year, VaR95pct), 
-                        VaR_GBM_S2=getVaR(g_S2$gain1year, VaR95pct), 
-                        VaR_GBM_PTFL=getVaR(g_S1$gain1year+g_S2$gain1year, VaR95pct), 
-                        VaR_GARCH_S1=getVaR(g_AAPL$gain1year, VaR95pct), 
-                        VaR_GARCH_S2=getVaR(g_AMZN$gain1year, VaR95pct), 
-                        VaR_GARCH_PTFL=getVaR(g_BEKK_AAPL$gain1year+g_BEKK_AMZN$gain1year, VaR95pct), 
-                        ES_GBM_S1=getES(g_S1$gain1year, VaR95pct), 
-                        ES_GBM_S2=getES(g_S2$gain1year, VaR95pct), 
-                        ES_GBM_PTFL=getVaR(g_S1$gain1year+g_S2$gain1year, VaR95pct), 
-                        ES_GARCH_S1=getES(g_AAPL$gain1year, VaR95pct), 
-                        ES_GARCH_S2=getES(g_AMZN$gain1year, VaR95pct), 
-                        ES_GARCH_PTFL=getVaR(g_BEKK_AAPL$gain1year+g_BEKK_AMZN$gain1year, VaR95pct)
+                        VaR_GBM_S1= getVaR(g_S1$gain1year, VaR99pct), 
+                        VaR_GBM_S2=getVaR(g_S2$gain1year, VaR99pct), 
+                        VaR_GBM_PTFL=getVaR(g_S1$gain1year+g_S2$gain1year, VaR99pct), 
+                        VaR_GARCH_S1=getVaR(g_AAPL$gain1year, VaR99pct), 
+                        VaR_GARCH_S2=getVaR(g_AMZN$gain1year, VaR99pct), 
+                        VaR_GARCH_PTFL=getVaR(g_BEKK_AAPL$gain1year+g_BEKK_AMZN$gain1year, VaR99pct), 
+                        ES_GBM_S1=getES(g_S1$gain1year, VaR99pct), 
+                        ES_GBM_S2=getES(g_S2$gain1year, VaR99pct), 
+                        ES_GBM_PTFL=getVaR(g_S1$gain1year+g_S2$gain1year, VaR99pct), 
+                        ES_GARCH_S1=getES(g_AAPL$gain1year, VaR99pct), 
+                        ES_GARCH_S2=getES(g_AMZN$gain1year, VaR99pct), 
+                        ES_GARCH_PTFL=getVaR(g_BEKK_AAPL$gain1year+g_BEKK_AMZN$gain1year, VaR99pct)
                         )
       reportRec <- rbind(reportRec, reportCurrRec)
     }
   }
 }
 
-reportRec
+# reportRec
 
 # setwd("C:/Documents and Settings/Data")
 write.csv(reportRec,'reportRec.csv')
+```
+
+```{r}
+
+
+
+
 ```
 
