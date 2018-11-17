@@ -30,7 +30,7 @@ T_3m = 63 # T_1y / 4
 dailyRiskFeeRate = 0.026/360 #daily rate
 g     = 1.5
 I_0   = 1000000
-V_0   = 2000000
+V_0   = 1000000
 I_min = 1000000 * 0.4   # 40% of initial investment level
 pct99 = 0.99
 ```
@@ -41,7 +41,7 @@ pct99 = 0.99
 ## price: n by t matrix
 ##   n: number of paths
 ##   t: must be 252 days, which is one year trading days
-GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
+GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin, isShowPlot) {
   
   ## core function begin
   numPath = nrow(price)
@@ -52,6 +52,10 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
   v3mResult = rep(0,numPath)
   g1yResult = rep(0,numPath)
   v1yResult = rep(0,numPath)
+  
+  if (!missing(isShowPlot)) {
+    vResults = matrix(rep(0,T), nrow=numPath)
+  }
 
   for (j in 1:numPath) {
     # initialization
@@ -95,12 +99,24 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
         I[t]   <- min( IL[t]+abs(IS[t]), gamma*V[t-1] )
         ctrlrReset[t] <- min( IL[t], abs(IS[t]) )
       }
+      
+      # if (!missing(isShowPlot)) {
+      #   message("vResult=")
+      #   vResults[j,t] = V[t]
+      # }
     }
 
     g3mResult[j] = g[T_3m]
     v3mResult[j] = V[T_3m]
     g1yResult[j] = g[T]
     v1yResult[j] = V[T]
+  }
+
+  time = (0:T)
+  message("vResults=", length(price))
+
+  if (!missing(isShowPlot)) {
+    matplot(time,t(vResults),type="l")
   }
   
   result = data.frame(gain3m    = g3mResult, 
@@ -378,9 +394,9 @@ simulatedResults <- data.frame(alpha=double(),
 time3m = (1:T_3m)
 time1y = (1:T_1y)
 
-for (a in seq(from=0.5, to=1.5, by=0.5)) {
-  for (b in seq(from=0.5, to=1.5, by=0.5)) {
-    for (k in seq(from=1, to=1, by=1)) {
+for (a in seq(from=0.5, to=1, by=0.5)) {
+  for (b in seq(from=0.5, to=1, by=0.5)) {
+    for (k in seq(from=1, to=2, by=1)) {
       # for simplicity, we set V_0 and I_0 for both stocks to be the same, for ease of computing porfolio return
       # rs stands for result set
       rsS1 <- GSLS(S1_gen, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
