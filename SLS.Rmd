@@ -412,8 +412,11 @@ for (a in seq(from=0.5, to=0.5, by=0.5)) {
       hist(rsBEKK_AAPL$return1y+rsBEKK_AMZN$return1y, main=paste("Histogram of GARCH Histogram: alpha =", a, " beta =", b, " K=", k))
       
       sample = apply( (rsS2$allV + rsS2$allV - sum(V_0)) / sum(V_0), 2, quantile, probs=c(0.01, 0.5, 0.99))
-      plot(c(1:253, 1:253, 1:253), c(sample[1,],sample[2,],sample[3,]), main=paste("Contour of GBM portfolio", "alpha =", a, " beta =", b, " K=", k), xlab="time", ylab="pct return")
+      plot(c(1:253, 1:253, 1:253), c(sample[1,],sample[2,],sample[3,]), main=paste("Contour of Portfolio Simulation based on GBM Model", "alpha =", a, " beta =", b, " K=", k), xlab="time", ylab="pct return")
 
+      sample = apply( (rsBEKK_AAPL$allV + rsBEKK_AMZN$allV - sum(V_0)) / sum(V_0), 2, quantile, probs=c(0.01, 0.5, 0.99))
+      plot(c(1:253, 1:253, 1:253), c(sample[1,],sample[2,],sample[3,]), main=paste("ontour of Portfolio Simulation based on GARCH Model", "alpha =", a, " beta =", b, " K=", k), xlab="time", ylab="pct return")
+      
       stimulatedRec <- data.frame(alpha=a,
                         beta=b,
                         K=k,
