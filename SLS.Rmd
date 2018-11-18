@@ -29,8 +29,8 @@ T_3m = 63 # T_1y / 4
 # parameters
 dailyRiskFeeRate = 0.026/360 #daily rate
 g     = 1.5
-I_0   = 1000000
-V_0   = 1000000
+I_0   = c(1000000, 1000000) #Initial investment level I_0 for each stock in portfolio
+V_0   = c(1000000, 1000000) #Initial account value V_0 for each stock in portfolio
 I_min = 1000000 * 0.4   # 40% of initial investment level
 pct99 = 0.99
 ```
@@ -41,7 +41,9 @@ pct99 = 0.99
 ## price: n by t matrix
 ##   n: number of paths
 ##   t: must be 252 days, which is one year trading days
-GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin, isShowPlot, modelName) {
+GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin
+                 # , isShowPlot, modelName
+                 ) {
   
   ## core function begin
   numPath = nrow(price)
@@ -54,7 +56,7 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin, isShowPlot, mode
   g1yResult = rep(0,numPath)
   v1yResult = rep(0,numPath)
   
-  pctReturn = matrix(rep(0,T*numPath), nrow=numPath)
+  allV = matrix(rep(0,T*numPath), nrow=numPath)
 
   for (j in 1:numPath) {
     # initialization
@@ -86,7 +88,7 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin, isShowPlot, mode
         g[t]   <- gL[t] + gS[t]
         V[t]   <- V[t-1] + g[t] - g[t-1] + r*(V[t-1]-abs(I[t-1]))
         # for plotting return path
-        pctReturn[j,t] = (V[t] - V_0)/V_0
+        allV[j,t] = V[t]
         # message("V=", V[t])
         if (ctrlrReset[t-1] >= Imin) {
           #normal case
@@ -115,19 +117,14 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin, isShowPlot, mode
 
   time = (0:T)
   # message("vResults=", length(price))
-
   
-  if (!missing(isShowPlot)) {
-    sample = apply(pctReturn, 2, quantile, probs=c(0.01, 0.5, 0.99))
-    plot(c(1:253, 1:253, 1:253), c(sample[1,],sample[2,],sample[3,]), main=paste("Contour of ", modelName, " alpha =", a, " beta =", b, " K=", k), xlab="time", ylab="pct return")
-  }
-  
-  result = data.frame(gain3m    = g3mResult, 
+  result = list(gain3m    = g3mResult, 
                       acctVal3m = v3mResult, 
                       return3m  = (v3mResult-V_0)/V_0, 
                       gain1y    = g1yResult, 
                       acctVal1y = v1yResult,
-                      return1y  = (v1yResult-V_0)/V_0)
+                      return1y  = (v1yResult-V_0)/V_0,
+                      allV  = allV)
   
   return(result)
 }
@@ -320,7 +317,7 @@ library(expm)
 library(MASS)
 library(zoo)
 # Fit BEKK model (bivariate GARCH Model) use log return
-M2 <- BEKK11(R) # R is the 757 * 2 log-returns from independent GARCH
+# M2 <- BEKK11(R) # R is the 757 * 2 log-returns from independent GARCH
 
 # Extract coefficients/parameters in BEKK model and store them in vectors/matrices
 mu <- M2$estimates[1:2]
@@ -397,24 +394,25 @@ simulationResults <- data.frame(alpha=double(),
 time3m = (1:T_3m)
 time1y = (1:T_1y)
 
-for (a in seq(from=0.5, to=1.5, by=0.5)) {
-  for (b in seq(from=0.5, to=1.5, by=0.5)) {
-    for (k in seq(from=1, to=3, by=1)) {
+for (a in seq(from=0.5, to=0.5, by=0.5)) {
+  for (b in seq(from=0.5, to=0.5, by=0.5)) {
+    for (k in seq(from=1, to=1, by=1)) {
       # for simplicity, we set V_0 and I_0 for both stocks to be the same, for ease of computing porfolio return
       # rs stands for result set
-      rsS1 <- GSLS(S1_gen, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
-      rsS2 <- GSLS(S2_gen, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
+      rsS1 <- GSLS(S1_gen, I0=I_0[1], V0=V_0[1], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
+      rsS2 <- GSLS(S2_gen, I0=I_0[2], V0=V_0[2], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
       
-      rsAAPL <- GSLS(Output_AAPL, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
-      rsAMZN <- GSLS(Output_AMZN, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
+      rsAAPL <- GSLS(Output_AAPL, I0=I_0[1], V0=V_0[1], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
+      rsAMZN <- GSLS(Output_AMZN, I0=I_0[2], V0=V_0[2], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
 
-      rsBEKK_AAPL <- GSLS(Output_BEKK_AAPL, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
-      rsBEKK_AMZN <- GSLS(Output_BEKK_AMZN, I0=I_0, V0=V_0, alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
+      rsBEKK_AAPL <- GSLS(Output_BEKK_AAPL, I0=I_0[1], V0=V_0[1], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
+      rsBEKK_AMZN <- GSLS(Output_BEKK_AMZN, I0=I_0[2], V0=V_0[2], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
 
       hist(rsS1$return1y+rsS2$return1y, main=paste("Histogram of GBM Histogram: alpha =", a, " beta =", b, " K=", k))
       hist(rsBEKK_AAPL$return1y+rsBEKK_AMZN$return1y, main=paste("Histogram of GARCH Histogram: alpha =", a, " beta =", b, " K=", k))
       
-      # matplot(time1y,t(mean(rsS1$return1y+rsS2$return1y)),type="l")
+      sample = apply( (rsS2$allV + rsS2$allV - sum(V_0)) / sum(V_0), 2, quantile, probs=c(0.01, 0.5, 0.99))
+      plot(c(1:253, 1:253, 1:253), c(sample[1,],sample[2,],sample[3,]), main=paste("Contour of GBM portfolio", "alpha =", a, " beta =", b, " K=", k), xlab="time", ylab="pct return")
 
       stimulatedRec <- data.frame(alpha=a,
                         beta=b,
