@@ -406,13 +406,18 @@ for (a in seq(from=0.5, to=0.5, by=0.5)) {
 
       rsBEKK_AAPL <- GSLS(Output_BEKK_AAPL, I0=I_0[1], V0=V_0[1], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
       rsBEKK_AMZN <- GSLS(Output_BEKK_AMZN, I0=I_0[2], V0=V_0[2], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
+      
+      # initialize portfolio calculation
+      gbmPftlRet3m   = (rsS1$acctVal3m+rsS2$acctVal3m-sum_V_0)/sum_V_0
+      gbmPftlRet1y   = (rsS1$acctVal1y+rsS2$acctVal1y-sum_V_0)/sum_V_0
+      garchPftlRet3m = (rsBEKK_AAPL$acctVal3m+rsBEKK_AMZN$acctVal3m-sum_V_0)/sum_V_0
+      garchPftlRet1y = (rsBEKK_AAPL$acctVal1y+rsBEKK_AMZN$acctVal1y-sum_V_0)/sum_V_0
 
       # plot histogram
-      hist( (rsS1$acctVal1y+rsS2$acctVal1y-sum_V_0) / sum_V_0, main=paste("Histogram of GBM Histogram: alpha =", a, " beta =", b, " K=", k))
-      hist( (rsBEKK_AAPL$return1y+rsBEKK_AMZN$return1y-sum_V_0)/sum_V_0, main=paste("Histogram of GARCH Histogram: alpha =", a, " beta =", b, " K=", k))
+      hist( gbmPftlRet1y,   main=paste("Histogram of GBM Histogram: alpha =", a, " beta =", b, " K=", k))
+      hist( garchPftlRet1y, main=paste("Histogram of GARCH Histogram: alpha =", a, " beta =", b, " K=", k))
 
-      # ggplot(df, aes(x=df$Close)) +  geom_histogram( aes(y=..density..), color="black", fill="white") + geom_vline(aes(xintercept=mean(df$Close-500)), color="blue", linetype="dashed", size=1) + geom_density(alpha=.2, fill="#FF6666") 
-
+      # ggplot(df, aes(x=gbmPftlRet3m)) +  geom_histogram( aes(y=..density..), color="black", fill="white") + geom_vline(aes(xintercept=mean(gbmPftlRet3m)), color="blue", linetype="dashed", size=1) + geom_density(alpha=.2, fill="#FF6666")
             
       # plot contour
       sample = apply( (rsS2$allV + rsS2$allV - sum_V_0) / sum_V_0, 2, quantile, probs=c(0.01, 0.5, 0.99))
@@ -420,11 +425,6 @@ for (a in seq(from=0.5, to=0.5, by=0.5)) {
 
       sample = apply( (rsBEKK_AAPL$allV + rsBEKK_AMZN$allV - sum_V_0) / sum_V_0, 2, quantile, probs=c(0.01, 0.5, 0.99))
       plot(c(1:253, 1:253, 1:253), c(sample[1,],sample[2,],sample[3,]), main=paste("ontour of Portfolio Simulation based on GARCH Model", "alpha =", a, " beta =", b, " K=", k), xlab="time", ylab="pct return")
-
-      gbmPftlRet3m   = (rsS1$acctVal3m+rsS2$acctVal3m-sum_V_0)/sum_V_0
-      gbmPftlRet1y   = (rsS1$acctVal1y+rsS2$acctVal1y-sum_V_0)/sum_V_0
-      garchPftlRet3m = (rsBEKK_AAPL$acctVal3m+rsBEKK_AMZN$acctVal3m-sum_V_0)/sum_V_0
-      garchPftlRet1y = (rsBEKK_AAPL$acctVal1y+rsBEKK_AMZN$acctVal1y-sum_V_0)/sum_V_0
       
       #save stimulation result
       stimulationRec <- data.frame(alpha=a,
