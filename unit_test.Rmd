@@ -106,8 +106,8 @@ sprintf("Expected Shortfall of AAPL=%f AMZN=%f", ES_AAPL, ES_AMZN)
 
 ```{r ggplot histogram}
 # install.packages("ggplot2")
-install.packages("quantmod")
-#install.packages("xts")
+# install.packages("quantmod")
+# install.packages("xts")
 
 library(ggplot2)
 library(quantmod)
@@ -116,10 +116,7 @@ library(quantmod)
 df = getSymbols("AMZN", from ="2015-11-09", to = "2018-11-08", auto.assign = FALSE) 
 colnames(df) = c("Open","High","Low","Close","Volume","Adjusted")
 
-
-  ggplot(df, aes(x=df$Close)) +  geom_histogram( aes(y=..density..), color="black", fill="white") + geom_vline(aes(xintercept=mean(df$Close-500)), color="blue", linetype="dashed", size=1) + geom_density(alpha=.2, fill="#FF6666") 
-  
-
+ggplot(df, aes(x=df$Close)) +  geom_histogram( aes(y=..density..), color="black", fill="white") + geom_vline(aes(xintercept=mean(df$Close-500)), color="blue", linetype="dashed", size=1) + geom_density(alpha=.2, fill="#FF6666") 
 ```
 
 
