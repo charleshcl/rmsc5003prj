@@ -391,13 +391,12 @@ simulationResults <- data.frame(alpha=double(),
                         ES99_3m_GARCH_PTFL=double()
                         )
 
-time3m = (1:T_3m)
-time1y = (1:T_1y)
+sum_V_0 = sum(V_0)
 
 for (a in seq(from=0.5, to=0.5, by=0.5)) {
   for (b in seq(from=0.5, to=0.5, by=0.5)) {
     for (k in seq(from=1, to=1, by=1)) {
-      # for simplicity, we set V_0 and I_0 for both stocks to be the same, for ease of computing porfolio return
+
       # rs stands for result set
       rsS1 <- GSLS(S1_gen, I0=I_0[1], V0=V_0[1], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
       rsS2 <- GSLS(S2_gen, I0=I_0[2], V0=V_0[2], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
@@ -408,46 +407,64 @@ for (a in seq(from=0.5, to=0.5, by=0.5)) {
       rsBEKK_AAPL <- GSLS(Output_BEKK_AAPL, I0=I_0[1], V0=V_0[1], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
       rsBEKK_AMZN <- GSLS(Output_BEKK_AMZN, I0=I_0[2], V0=V_0[2], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
 
-      hist(rsS1$return1y+rsS2$return1y, main=paste("Histogram of GBM Histogram: alpha =", a, " beta =", b, " K=", k))
-      hist(rsBEKK_AAPL$return1y+rsBEKK_AMZN$return1y, main=paste("Histogram of GARCH Histogram: alpha =", a, " beta =", b, " K=", k))
-      
-      sample = apply( (rsS2$allV + rsS2$allV - sum(V_0)) / sum(V_0), 2, quantile, probs=c(0.01, 0.5, 0.99))
+      # plot histogram
+      hist( (rsS1$acctVal1y+rsS2$acctVal1y-sum_V_0) / sum_V_0, main=paste("Histogram of GBM Histogram: alpha =", a, " beta =", b, " K=", k))
+      hist( (rsBEKK_AAPL$return1y+rsBEKK_AMZN$return1y-sum_V_0)/sum_V_0, main=paste("Histogram of GARCH Histogram: alpha =", a, " beta =", b, " K=", k))
+
+      # ggplot(df, aes(x=df$Close)) +  geom_histogram( aes(y=..density..), color="black", fill="white") + geom_vline(aes(xintercept=mean(df$Close-500)), color="blue", linetype="dashed", size=1) + geom_density(alpha=.2, fill="#FF6666") 
+
+            
+      # plot contour
+      sample = apply( (rsS2$allV + rsS2$allV - sum_V_0) / sum_V_0, 2, quantile, probs=c(0.01, 0.5, 0.99))
       plot(c(1:253, 1:253, 1:253), c(sample[1,],sample[2,],sample[3,]), main=paste("Contour of Portfolio Simulation based on GBM Model", "alpha =", a, " beta =", b, " K=", k), xlab="time", ylab="pct return")
 
-      sample = apply( (rsBEKK_AAPL$allV + rsBEKK_AMZN$allV - sum(V_0)) / sum(V_0), 2, quantile, probs=c(0.01, 0.5, 0.99))
+      sample = apply( (rsBEKK_AAPL$allV + rsBEKK_AMZN$allV - sum_V_0) / sum_V_0, 2, quantile, probs=c(0.01, 0.5, 0.99))
       plot(c(1:253, 1:253, 1:253), c(sample[1,],sample[2,],sample[3,]), main=paste("ontour of Portfolio Simulation based on GARCH Model", "alpha =", a, " beta =", b, " K=", k), xlab="time", ylab="pct return")
+
+      gbmPftlRet3m   = (rsS1$acctVal3m+rsS2$acctVal3m-sum_V_0)/sum_V_0
+      gbmPftlRet1y   = (rsS1$acctVal1y+rsS2$acctVal1y-sum_V_0)/sum_V_0
+      garchPftlRet3m = (rsBEKK_AAPL$acctVal3m+rsBEKK_AMZN$acctVal3m-sum_V_0)/sum_V_0
+      garchPftlRet1y = (rsBEKK_AAPL$acctVal1y+rsBEKK_AMZN$acctVal1y-sum_V_0)/sum_V_0
       
-      stimulatedRec <- data.frame(alpha=a,
+      #save stimulation result
+      stimulationRec <- data.frame(alpha=a,
                         beta=b,
                         K=k,
                         ### 3 mths
-                        VaR99_3m_GBM_S1= getVaR(rsS1$return3m, pct99), 
-                        VaR99_3m_GBM_S2=getVaR(rsS2$return3m, pct99), 
-                        VaR99_3m_GBM_PTFL=getVaR(rsS1$return3m+rsS2$return3m, pct99), 
-                        VaR99_3m_GARCH_S1=getVaR(rsAAPL$return3m, pct99), 
-                        VaR99_3m_GARCH_S2=getVaR(rsAMZN$return3m, pct99), 
-                        VaR99_3m_GARCH_PTFL=getVaR(rsBEKK_AAPL$return3m+rsBEKK_AMZN$return3m, pct99), 
-                        ES99_3m_GBM_S1=getES(rsS1$return3m, pct99), 
-                        ES99_3m_GBM_S2=getES(rsS2$return3m, pct99), 
-                        ES99_3m_GBM_PTFL=getVaR(rsS1$return3m+rsS2$return3m, pct99), 
-                        ES99_3m_GARCH_S1=getES(rsAAPL$return3m, pct99), 
-                        ES99_3m_GARCH_S2=getES(rsAMZN$return3m, pct99), 
-                        ES99_3m_GARCH_PTFL=getVaR(rsBEKK_AAPL$return3m+rsBEKK_AMZN$return3m, pct99),
+                        VaR99_3m_GBM_S1    =getVaR(rsS1$return3m, pct99), 
+                        VaR99_3m_GBM_S2    =getVaR(rsS2$return3m, pct99), 
+                        VaR99_3m_GBM_PTFL  =getVaR(gbmPftlRet3m, pct99), 
+                                                   
+                        VaR99_3m_GARCH_S1  =getVaR(rsAAPL$return3m, pct99), 
+                        VaR99_3m_GARCH_S2  =getVaR(rsAMZN$return3m, pct99), 
+                        VaR99_3m_GARCH_PTFL=getVaR(garchPftlRet3m, pct99), 
+                        
+                        ES99_3m_GBM_S1     =getES(rsS1$return3m, pct99), 
+                        ES99_3m_GBM_S2     =getES(rsS2$return3m, pct99), 
+                        ES99_3m_GBM_PTFL   =getES(gbmPftlRet3m, pct99), 
+                        
+                        ES99_3m_GARCH_S1   =getES(rsAAPL$return3m, pct99), 
+                        ES99_3m_GARCH_S2   =getES(rsAMZN$return3m, pct99), 
+                        ES99_3m_GARCH_PTFL =getES(garchPftlRet3m, pct99),
+                        
                         ### 1 year
-                        VaR99_1y_GBM_S1= getVaR(rsS1$return1y, pct99), 
-                        VaR99_1y_GBM_S2=getVaR(rsS2$return1y, pct99), 
-                        VaR99_1y_GBM_PTFL=getVaR(rsS1$return1y+rsS2$return1y, pct99), 
-                        VaR99_1y_GARCH_S1=getVaR(rsAAPL$return1y, pct99), 
-                        VaR99_1y_GARCH_S2=getVaR(rsAMZN$return1y, pct99), 
-                        VaR99_1y_GARCH_PTFL=getVaR(rsBEKK_AAPL$return1y+rsBEKK_AMZN$return1y, pct99), 
-                        ES99_1y_GBM_S1=getES(rsS1$return1y, pct99), 
-                        ES99_1y_GBM_S2=getES(rsS2$return1y, pct99), 
-                        ES99_1y_GBM_PTFL=getVaR(rsS1$return1y+rsS2$return1y, pct99), 
-                        ES99_1y_GARCH_S1=getES(rsAAPL$return1y, pct99), 
-                        ES99_1y_GARCH_S2=getES(rsAMZN$return1y, pct99), 
-                        ES99_1y_GARCH_PTFL=getVaR(rsBEKK_AAPL$return1y+rsBEKK_AMZN$return1y, pct99)
+                        VaR99_1y_GBM_S1    =getVaR(rsS1$return1y, pct99), 
+                        VaR99_1y_GBM_S2    =getVaR(rsS2$return1y, pct99), 
+                        VaR99_1y_GBM_PTFL  =getVaR(gbmPftlRet1y, pct99), 
+                        
+                        VaR99_1y_GARCH_S1  =getVaR(rsAAPL$return1y, pct99), 
+                        VaR99_1y_GARCH_S2  =getVaR(rsAMZN$return1y, pct99), 
+                        VaR99_1y_GARCH_PTFL=getVaR(garchPftlRet1y, pct99), 
+                        
+                        ES99_1y_GBM_S1     =getES(rsS1$return1y, pct99), 
+                        ES99_1y_GBM_S2     =getES(rsS2$return1y, pct99), 
+                        ES99_1y_GBM_PTFL   =getES(gbmPftlRet1y, pct99), 
+                        
+                        ES99_1y_GARCH_S1   =getES(rsAAPL$return1y, pct99), 
+                        ES99_1y_GARCH_S2   =getES(rsAMZN$return1y, pct99), 
+                        ES99_1y_GARCH_PTFL =getES(garchPftlRet1y, pct99)
                         )
-      simulationResults <- rbind(simulationResults, stimulatedRec)
+      simulationResults <- rbind(simulationResults, stimulationRec)
     }
   }
 }
