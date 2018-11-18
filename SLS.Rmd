@@ -19,10 +19,10 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Global variables
 ```{r global variables}
-# P = 1000 # Number of Sample Path
-P = 10000 # Number of Sample Path
+P = 1000 # Number of Sample Path
+# P = 10000 # Number of Sample Path
 path = P
-T = 252  # Length of Simulated Series
+T = 252  # Length of simulation Series
 T_1y = 252
 T_3m = 63 # T_1y / 4
 
@@ -201,7 +201,7 @@ library(quantmod)
 library(fGarch)
 ############# Parameters for Adjustment ##############
 # P = 100 # Number of Sample Path
-# T = 10  # Length of Simulated Series
+# T = 10  # Length of simulation Series
 
 ############# Download stock data and calculate log-returns ##############
 AAPL <- as.numeric(getSymbols("AAPL", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)$AAPL.Close)
@@ -362,7 +362,7 @@ write.csv(Output_BEKK_AMZN,'Output_BEKK_AMZN.csv')
 
 
 ```{r data for analysis}
-simulatedResults <- data.frame(alpha=double(),
+simulationResults <- data.frame(alpha=double(),
                         beta=double(),
                         K=double(),
                         VaR99_1y_GBM_S1=double(), 
@@ -443,13 +443,13 @@ for (a in seq(from=0.5, to=1.5, by=0.5)) {
                         ES99_1y_GARCH_S2=getES(rsAMZN$return1y, pct99), 
                         ES99_1y_GARCH_PTFL=getVaR(rsBEKK_AAPL$return1y+rsBEKK_AMZN$return1y, pct99)
                         )
-      simulatedResults <- rbind(simulatedResults, stimulatedRec)
+      simulationResults <- rbind(simulationResults, stimulatedRec)
     }
   }
 }
 
 # setwd("C:/Documents and Settings/Data")
-write.csv(simulatedResults,'simulatedResults.csv')
+write.csv(simulationResults,'simulationResults.csv')
 ```
 
 
