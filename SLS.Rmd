@@ -41,21 +41,20 @@ pct99 = 0.99
 ## price: n by t matrix
 ##   n: number of paths
 ##   t: must be 252 days, which is one year trading days
-GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin, isShowPlot) {
+GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin, isShowPlot, modelName) {
   
   ## core function begin
   numPath = nrow(price)
   T       = ncol(price)   #expected 252
 
+  # message(" numPath=", numPath, " T=", T)
   ## result is an 1 x numPath vector of gain at terminal T
   g3mResult = rep(0,numPath)
   v3mResult = rep(0,numPath)
   g1yResult = rep(0,numPath)
   v1yResult = rep(0,numPath)
   
-  if (!missing(isShowPlot)) {
-    vResults = matrix(rep(0,T), nrow=numPath)
-  }
+  pctReturn = matrix(rep(0,T*numPath), nrow=numPath)
 
   for (j in 1:numPath) {
     # initialization
@@ -86,6 +85,8 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin, isShowPlot) {
         gS[t]  <- gS[t-1] + rho[t]*IS[t-1]
         g[t]   <- gL[t] + gS[t]
         V[t]   <- V[t-1] + g[t] - g[t-1] + r*(V[t-1]-abs(I[t-1]))
+        # for plotting return path
+        pctReturn[j,t] = (V[t] - V_0)/V_0
         # message("V=", V[t])
         if (ctrlrReset[t-1] >= Imin) {
           #normal case
@@ -115,8 +116,10 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin, isShowPlot) {
   time = (0:T)
   # message("vResults=", length(price))
 
+  
   if (!missing(isShowPlot)) {
-    matplot(time,t(vResults),type="l")
+    sample = apply(pctReturn, 2, quantile, probs=c(0.01, 0.5, 0.99))
+    plot(c(1:253, 1:253, 1:253), c(sample[1,],sample[2,],sample[3,]), main=paste("Contour of ", modelName, " alpha =", a, " beta =", b, " K=", k), xlab="time", ylab="pct return")
   }
   
   result = data.frame(gain3m    = g3mResult, 
