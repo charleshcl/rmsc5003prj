@@ -58,8 +58,8 @@ ES
 
 Running GSLS
 ```{r running_gsls}
-g_S1 <- GSLS(S1_gen, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
-g_S2 <- GSLS(S2_gen, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
+rsS1 <- GSLS(S1_gen, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40, isShowPlot = TRUE)
+rsS2 <- GSLS(S2_gen, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
 
 g_AAPL <- GSLS(Output_AAPL, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
 g_AMZN <- GSLS(Output_AMZN, I0=100, V0=100, alpha=1, beta=1, gamma=1.5, K=2, r=0.0003, Imin=40)
@@ -122,3 +122,16 @@ colnames(df) = c("Open","High","Low","Close","Volume","Adjusted")
 
 ```
 
+
+```{r contour plot}
+I_0   = c(1000000, 1000000) #Initial investment level I_0 for each stock in portfolio
+V_0   = c(1000000, 1000000) #Initial account value V_0 for each stock in portfolio
+
+a=1
+b=1
+k=2
+
+rsS1 <- GSLS(S1_gen, I0=I_0[1], V0=V_0[1], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
+
+rsS2 <- GSLS(S2_gen, I0=I_0[2], V0=V_0[2], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
+```
