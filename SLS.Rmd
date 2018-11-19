@@ -19,7 +19,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Global variables
 ```{r global variables}
-P = 100 # Number of Sample Path
+P = 10000 # Number of Sample Path
 # P = 10000 # Number of Sample Path
 path = P
 T = 252  # Length of simulation Series
@@ -59,7 +59,7 @@ GSLS_Ptfl <- function(price1, price2, I0, V0, alpha, beta, gamma, K, r, Imin) {
   v1yResult = rep(0,numPath)
   
   allV = matrix(rep(0,T*numPath), nrow=numPath)
-   
+  
   for (j in 1:numPath) {
     # initialization
     I <- matrix(rep(0,2*T),nrow=2)
@@ -85,6 +85,7 @@ GSLS_Ptfl <- function(price1, price2, I0, V0, alpha, beta, gamma, K, r, Imin) {
         I[,t]  <- IL[,t] + IS[,t]
         ctrlrReset[1,t] <- min(IL[1,t], abs(IS[1,t]))
         ctrlrReset[2,t] <- min(IL[2,t], abs(IS[2,t]))
+        allV[j,t] = V[t]
       } else {
         rho[1,t] <- (price1[j,t] - price1[j,t-1]) / price1[j,t-1]
         rho[2,t] <- (price2[j,t] - price2[j,t-1]) / price2[j,t-1]
@@ -105,9 +106,6 @@ GSLS_Ptfl <- function(price1, price2, I0, V0, alpha, beta, gamma, K, r, Imin) {
           IL[1,t]  <- IL[1,1]
           IS[1,t]  <- IS[1,1]
           I[1,t] <- 0
-          gL[1,t] <- 0 # g function also need to be reset 
-          gS[1,t] <- 0
-          g[1,t]  <- gL[1,t] + gS[1,t]
         }
         if (ctrlrReset[2,t-1] >= Imin) {
           #normal case
@@ -124,12 +122,12 @@ GSLS_Ptfl <- function(price1, price2, I0, V0, alpha, beta, gamma, K, r, Imin) {
           g[2,t]  <- gL[2,t] + gS[2,t]
         }
         # In a margin call, IL and IS need to be adjusted accordingly
-         if (sum(abs(I[,t])) > gamma*V[t-1]){
-           IL[,t]  <- IL[,t] * gamma*V[t-1] /(sum(abs(I[,t])))
-           IS[,t]  <- IS[,t] * gamma*V[t-1] /(sum(abs(I[,t])))
-           I[,t] <- IL[,t] + IS[,t]
-         }
-        ctrlrReset[,t] <- min( IL[,t], abs(IS[,t]) )
+        if (sum(abs(I[,t])) > gamma*V[t-1]){
+          IL[,t]  <- IL[,t] * gamma*V[t-1] /(sum(abs(I[,t])))
+          IS[,t]  <- IS[,t] * gamma*V[t-1] /(sum(abs(I[,t])))
+          I[,t] <- IL[,t] + IS[,t]
+        }
+        ctrlrReset[,t] <- min( IL[,t], abs(IS[,t])/alpha )
       }
       
       # if (!missing(isShowPlot)) {
@@ -140,7 +138,7 @@ GSLS_Ptfl <- function(price1, price2, I0, V0, alpha, beta, gamma, K, r, Imin) {
     v3mResult[j] = V[T_3m]
     v1yResult[j] = V[T]
   }
-
+  
   time = (0:T)
   # message("vResults=", length(price))
   
@@ -156,12 +154,12 @@ GSLS_Ptfl <- function(price1, price2, I0, V0, alpha, beta, gamma, K, r, Imin) {
 
 GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin
                  # , isShowPlot, modelName
-                 ) {
+) {
   
   ## core function begin
   numPath = nrow(price)
   T       = ncol(price)   #expected 252
-
+  
   # message(" numPath=", numPath, " T=", T)
   ## result is an 1 x numPath vector of gain at terminal T
   g3mResult = rep(0,numPath)
@@ -170,7 +168,7 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin
   v1yResult = rep(0,numPath)
   
   allV = matrix(rep(0,T*numPath), nrow=numPath)
-
+  
   for (j in 1:numPath) {
     # initialization
     I   <- rep(0,T)
@@ -194,6 +192,7 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin
         V[t]  <- V0
         I[t]  <- IL[t]+ IS[t]
         ctrlrReset[t] <- min(IL[t], abs(IS[t]))
+        allV[j,t] = V[t]
       } else {
         rho[t] <- (price[j,t] - price[j,t-1]) / price[j,t-1]
         gL[t]  <- gL[t-1] + rho[t]*IL[t-1]
@@ -212,17 +211,14 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin
           IL[t]  <- IL[1]
           IS[t]  <- IS[1]
           I[t] <- 0
-          gL[t] <- 0 # g function also need to be reset 
-          gS[t] <- 0
-          g[t]  <- gL[t] + gS[t]
         }
         # In a margin call, IL and IS need to be adjusted accordingly
-         if (abs(IL[t]+IS[t]) > gamma*V[t-1]){
-           IL[t]  <- IL[t] * gamma*V[t-1] /(abs(IL[t]+IS[t]))
-           IS[t]  <- IS[t] * gamma*V[t-1] /(abs(IL[t]+IS[t]))
-           I[t] <- IL[t] + IS[t]
-         }
-        ctrlrReset[t] <- min( IL[t], abs(IS[t]) )
+        if (abs(IL[t]+IS[t]) > gamma*V[t-1]){
+          IL[t]  <- IL[t] * gamma*V[t-1] /(abs(IL[t]+IS[t]))
+          IS[t]  <- IS[t] * gamma*V[t-1] /(abs(IL[t]+IS[t]))
+          I[t] <- IL[t] + IS[t]
+        }
+        ctrlrReset[t] <- min( IL[t], abs(IS[t])/alpha )
       }
       
       # if (!missing(isShowPlot)) {
@@ -230,23 +226,23 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin
       #   vResults[j,t] = V[t]
       # }
     }
-
+    
     g3mResult[j] = g[T_3m]
     v3mResult[j] = V[T_3m]
     g1yResult[j] = g[T]
     v1yResult[j] = V[T]
   }
-
+  
   time = (0:T)
   # message("vResults=", length(price))
   
   result = list(gain3m    = g3mResult, 
-                      acctVal3m = v3mResult, 
-                      return3m  = (v3mResult-V0)/V0, 
-                      gain1y    = g1yResult, 
-                      acctVal1y = v1yResult,
-                      return1y  = (v1yResult-V0)/V0,
-                      allV  = allV)
+                acctVal3m = v3mResult, 
+                return3m  = (v3mResult-V0)/V0, 
+                gain1y    = g1yResult, 
+                acctVal1y = v1yResult,
+                return1y  = (v1yResult-V0)/V0,
+                allV  = allV)
   
   return(result)
 }
@@ -529,18 +525,18 @@ for (a in seq(from=0.5, to=0.5, by=0.5)) {
       rsBEKK_AAPL <- GSLS(Output_BEKK_AAPL, I0=I_0[1], V0=V_0[1], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
       rsBEKK_AMZN <- GSLS(Output_BEKK_AMZN, I0=I_0[2], V0=V_0[2], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
       
-#      rsBS_ptfl <- GSLS_Ptfl(price1 = S1_gen, price2 = S2_gen,I0 = I_0, V0 = sum(V_0), alpha = a, beta = b, gamma = g, K = k, r=dailyRiskFeeRate, Imin = I_min)
+      rsBS_ptfl <- GSLS_Ptfl(price1 = S1_gen, price2 = S2_gen,I0 = I_0, V0 = sum(V_0), alpha = a, beta = b, gamma = g, K = k, r=dailyRiskFeeRate, Imin = I_min)
       
-#      rsBEKK_ptfl <- GSLS_Ptfl(price1 = Output_BEKK_AAPL, price2 = Output_BEKK_AMZN,I0 = I_0, V0 = sum(V_0), alpha = a, beta = b, gamma = g, K = k, r=dailyRiskFeeRate, Imin = I_min)
+      rsBEKK_ptfl <- GSLS_Ptfl(price1 = Output_BEKK_AAPL, price2 = Output_BEKK_AMZN,I0 = I_0, V0 = sum(V_0), alpha = a, beta = b, gamma = g, K = k, r=dailyRiskFeeRate, Imin = I_min)
       # initialize portfolio calculation
-#      gbmPftlRet3m   = rsBS_ptfl$return3m
-#      gbmPftlRet1y   = rsBS_ptfl$return1y
-#      garchPftlRet3m = rsBEKK_ptfl$return3m 
-#      garchPftlRet1y = rsBEKK_ptfl$return1y
-       gbmPftlRet3m   = (rsS1$acctVal3m+rsS2$acctVal3m-sum_V_0)/sum_V_0
-       gbmPftlRet1y   = (rsS1$acctVal1y+rsS2$acctVal1y-sum_V_0)/sum_V_0
-       garchPftlRet3m = (rsBEKK_AAPL$acctVal3m+rsBEKK_AMZN$acctVal3m-sum_V_0)/sum_V_0
-       garchPftlRet1y = (rsBEKK_AAPL$acctVal1y+rsBEKK_AMZN$acctVal1y-sum_V_0)/sum_V_0
+      gbmPftlRet3m   = rsBS_ptfl$return3m
+      gbmPftlRet1y   = rsBS_ptfl$return1y
+      garchPftlRet3m = rsBEKK_ptfl$return3m 
+      garchPftlRet1y = rsBEKK_ptfl$return1y
+#       gbmPftlRet3m   = (rsS1$acctVal3m+rsS2$acctVal3m-sum_V_0)/sum_V_0
+#       gbmPftlRet1y   = (rsS1$acctVal1y+rsS2$acctVal1y-sum_V_0)/sum_V_0
+#       garchPftlRet3m = (rsBEKK_AAPL$acctVal3m+rsBEKK_AMZN$acctVal3m-sum_V_0)/sum_V_0
+#       garchPftlRet1y = (rsBEKK_AAPL$acctVal1y+rsBEKK_AMZN$acctVal1y-sum_V_0)/sum_V_0
       
       # plot histogram and denity curve
       hist( gbmPftlRet1y,   main=paste("Histogram of Portfolio Return under BS Model with alpha =", a, " beta =", b, " K=", k, "T = 1 Year"), xlim =c(min(gbmPftlRet1y)-0.1, max(gbmPftlRet1y)+0.1),breaks = 20, xlab="Return")
@@ -565,11 +561,19 @@ for (a in seq(from=0.5, to=0.5, by=0.5)) {
 
             
       # plot contour
-      sample = apply( (rsS2$allV + rsS2$allV - sum_V_0) / sum_V_0, 2, quantile, probs=c(0.01, 0.5, 0.99))
-      plot(c(1:253, 1:253, 1:253), c(sample[1,],sample[2,],sample[3,]), type="l", main=paste("Contour of Portfolio Simulation based on GBM Model", "alpha =", a, " beta =", b, " K=", k), xlab="time", ylab="pct return")
+      sample = apply( (rsBS_ptfl$allV - sum_V_0) / sum_V_0, 2, quantile, probs=c(0.01, 0.5, 0.99))
+      plot.zoo(t( (rsBS_ptfl$allV - sum_V_0) / sum_V_0 ), main = paste("Sample Return Paths and Empirical Confidence Envolope (BS Model)", "alpha =", a, " beta =", b, " K=", k), xlab="t", ylab="Portfolio Return", plot.type = "single")
+      lines(sample[1,],col="Red",lwd=2)
+      lines(sample[2,],col="Red",lwd=2)
+      lines(sample[3,],col="Red",lwd=2)
+      #plot(c(1:253, 1:253, 1:253), c(sample[1,],sample[2,],sample[3,]), type="l", main=paste("Contour of Portfolio Simulation based on GBM Model", "alpha =", a, " beta =", b, " K=", k), xlab="time", ylab="pct return")
 
-      sample = apply( (rsBEKK_AAPL$allV + rsBEKK_AMZN$allV - sum_V_0) / sum_V_0, 2, quantile, probs=c(0.01, 0.5, 0.99))
-      plot(c(1:253, 1:253, 1:253), c(sample[1,],sample[2,],sample[3,]), main=paste("ontour of Portfolio Simulation based on GARCH Model", "alpha =", a, " beta =", b, " K=", k), xlab="time", ylab="pct return")
+      sample = apply( (rsBEKK_ptfl$allV - sum_V_0) / sum_V_0, 2, quantile, probs=c(0.01, 0.5, 0.99))
+      plot.zoo(t((rsBEKK_ptfl$allV - sum_V_0) / sum_V_0), main = paste("Sample Return Paths and Empirical Confidence Envolope (BEKK Model)", "alpha =", a, " beta =", b, " K=", k), xlab="t", ylab="Portfolio Return", plot.type = "single")
+      lines(sample[1,],col="Red",lwd=2)
+      lines(sample[2,],col="Red",lwd=2)
+      lines(sample[3,],col="Red",lwd=2)
+      #plot(c(1:253, 1:253, 1:253), c(sample[1,],sample[2,],sample[3,]), type="l", main=paste("ontour of Portfolio Simulation based on BEKK Model", "alpha =", a, " beta =", b, " K=", k), xlab="time", ylab="pct return")
       
       #save stimulation result
       stimulationRec <- data.frame(alpha=a,
@@ -615,7 +619,7 @@ for (a in seq(from=0.5, to=0.5, by=0.5)) {
 }
 
 # setwd("C:/Documents and Settings/Data")
-write.csv(simulationResults,'simulationResults.csv')
+#write.csv(simulationResults,'simulationResults.csv')
 ```
 
 
