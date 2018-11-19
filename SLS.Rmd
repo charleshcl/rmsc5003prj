@@ -19,20 +19,19 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Global variables
 ```{r global variables}
-P = 10000 # Number of Sample Path
-# P = 10000 # Number of Sample Path
-path = P
+P = 10000  # Number of Sample Path
+path = P   # alias variable
 T = 252    # Length of simulation Series
 T_1y = 252 # number of trading days in one year
 T_3m = 63  # T_1y / 4
 
 # parameters
-dailyRiskFeeRate = 0.026/360 #daily rate
-g     = 1.5
-I_0   = c(1000000, 1000000) # Initial investment level I_0 for each stock in portfolio
-V_0   = c(1000000, 1000000) # Initial account value V_0 for each stock in portfolio
-I_min = 1000000 * 0.4       # 40% of initial investment level
-pct99 = 0.99                # 99 percent
+dailyRiskFeeRate = 0.026/360 # daily rate
+g     = 1.5                  # gamma: collateral requirement 
+I_0   = c(1000000, 1000000)  # Initial investment level I_0 for each stock in portfolio
+V_0   = c(1000000, 1000000)  # Initial account value V_0 for each stock in portfolio
+I_min = 1000000 * 0.4        # 40% of initial investment level
+pct99 = 0.99                 # 99 percent
 ```
 
 ## Helper Functions 
@@ -502,9 +501,9 @@ simulationResults <- data.frame(
 
 sum_V_0 = sum(V_0)
 
-for (a in seq(from=0.5, to=0.5, by=0.5)) {
-  for (b in seq(from=0.5, to=0.5, by=0.5)) {
-    for (k in seq(from=1, to=1, by=1)) {
+for (a in seq(from=0.5, to=1.5, by=0.5)) {
+  for (b in seq(from=0.5, to=1.5, by=0.5)) {
+    for (k in seq(from=1, to=5, by=2)) {
 
       # rs stands for result set
       rsS1 <- GSLS(S1_gen, I0=I_0[1], V0=V_0[1], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
