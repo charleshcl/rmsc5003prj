@@ -19,31 +19,27 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Global variables
 ```{r global variables}
-P = 10000  # Number of Sample Path
-path = P   # alias variable
-T = 252    # Length of simulation Series
-T_1y = 252 # number of trading days in one year
-T_3m = 63  # T_1y / 4
-
+P = 10000 # Number of Sample Path
+# P = 10000 # Number of Sample Path
+path = P
+T = 252  # Length of simulation Series
+T_1y = 252
+T_3m = 63 # T_1y / 4
 # parameters
-dailyRiskFeeRate = 0.026/360 # daily rate
-g     = 1.5                  # gamma: collateral requirement 
-I_0   = c(1000000, 1000000)  # Initial investment level I_0 for each stock in portfolio
-V_0   = c(1000000, 1000000)  # Initial account value V_0 for each stock in portfolio
-I_min = 1000000 * 0.4        # 40% of initial investment level
-pct99 = 0.99                 # 99 percent
+dailyRiskFeeRate = 0.026/360 #daily rate
+g     = 1.5
+I_0   = c(1000000, 1000000) #Initial investment level I_0 for each stock in portfolio
+V_0   = c(1000000, 1000000) #Initial account value V_0 for each stock in portfolio
+I_min = 1000000 * 0.4   # 40% of initial investment level
+pct99 = 0.99
 ```
 
 ## Helper Functions 
 ```{r helper functions}
-# GSLS for Portfolio
-# current supports a portfolio of TWO stocks
-#
-# arguments:
-# price[1,2]: n by t matrix
-#          n: number of paths
-#          t: must be 252 days, which is one year trading days
-
+# input parameter
+## price: n by t matrix
+##   n: number of paths
+##   t: must be 252 days, which is one year trading days
 GSLS_Ptfl <- function(price1, price2, I0, V0, alpha, beta, gamma, K, r, Imin) {
   
   ## core function begin
@@ -82,7 +78,7 @@ GSLS_Ptfl <- function(price1, price2, I0, V0, alpha, beta, gamma, K, r, Imin) {
         
         IL[,t] <-  I0
         IS[,t] <- -alpha*I0
-        V[t]   <- V0
+        V[t]  <- V0
         I[,t]  <- IL[,t] + IS[,t]
         ctrlrReset[1,t] <- min(IL[1,t], abs(IS[1,t]))
         ctrlrReset[2,t] <- min(IL[2,t], abs(IS[2,t]))
@@ -93,7 +89,7 @@ GSLS_Ptfl <- function(price1, price2, I0, V0, alpha, beta, gamma, K, r, Imin) {
         gL[,t]  <- gL[,t-1] + rho[,t]*IL[,t-1]
         gS[,t]  <- gS[,t-1] + rho[,t]*IS[,t-1]
         g[,t]   <- gL[,t] + gS[,t]
-        V[t]    <- V[t-1] + sum(g[,t]) - sum(g[,t-1]) + r*(V[t-1]-sum(abs(I[,t-1])))
+        V[t]   <- V[t-1] + sum(g[,t]) - sum(g[,t-1]) + r*(V[t-1]-sum(abs(I[,t-1])))
         # for plotting return path
         allV[j,t] = V[t]
         # message("V=", V[t])
@@ -101,61 +97,64 @@ GSLS_Ptfl <- function(price1, price2, I0, V0, alpha, beta, gamma, K, r, Imin) {
           #normal case
           IL[1,t]  <- max( (1+K*rho[1,t])*IL[1,t-1],0 )
           IS[1,t]  <- min( (1-beta*K*rho[1,t])*IS[1,t-1], 0 )
+          
         } else {  
           # controller reset
           IL[1,t]  <- IL[1,1]
           IS[1,t]  <- IS[1,1]
-          I[1,t]   <- 0
+          I[1,t] <- 0
         }
         if (ctrlrReset[2,t-1] >= Imin) {
           #normal case
           IL[2,t]  <- max( (1+K*rho[2,t])*IL[2,t-1],0 )
           IS[2,t]  <- min( (1-beta*K*rho[2,t])*IS[2,t-1], 0 )
+          
         } else {  
           # controller reset
           IL[2,t]  <- IL[2,1]
           IS[2,t]  <- IS[2,1]
-          I[2,t]   <- 0
-          # gL[2,t] <- 0 # g function no need to be reset 
-          # gS[2,t] <- 0
-          # g[2,t]  <- gL[2,t] + gS[2,t]
+          I[2,t] <- 0
+          gL[2,t] <- 0 # g function also need to be reset 
+          gS[2,t] <- 0
+          g[2,t]  <- gL[2,t] + gS[2,t]
         }
         # In a margin call, IL and IS need to be adjusted accordingly
         if (sum(abs(I[,t])) > gamma*V[t-1]){
           IL[,t]  <- IL[,t] * gamma*V[t-1] /(sum(abs(I[,t])))
           IS[,t]  <- IS[,t] * gamma*V[t-1] /(sum(abs(I[,t])))
-          I[,t]   <- IL[,t] + IS[,t]
+          I[,t] <- IL[,t] + IS[,t]
         }
         ctrlrReset[,t] <- min( IL[,t], abs(IS[,t])/alpha )
       }
+      
+      # if (!missing(isShowPlot)) {
+      #   message("vResult=")
+      #   vResults[j,t] = V[t]
+      # }
     }
     v3mResult[j] = V[T_3m]
     v1yResult[j] = V[T]
   }
   
-  result = list(
-    acctVal3m = v3mResult,
-    return3m  = (v3mResult - V0) / V0,
-    acctVal1y = v1yResult,
-    return1y  = (v1yResult - V0) / V0,
-    allV  = allV
-    )
+  time = (0:T)
+  # message("vResults=", length(price))
+  
+  result = list(      acctVal3m = v3mResult, 
+                      return3m  = (v3mResult-V0)/V0, 
+                      acctVal1y = v1yResult,
+                      return1y  = (v1yResult-V0)/V0,
+                      allV  = allV)
   
   return(result)
   
 }
-
-# GSLS for single stock
-#
-# arguments:
-# price: n by t matrix
-#     n: number of paths
-#     t: must be 252 days, which is one year trading days
-GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
+GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin
+                 # , isShowPlot, modelName
+) {
   
   ## core function begin
   numPath = nrow(price)
-  T       = ncol(price)   #expected 253
+  T       = ncol(price)   #expected 252
   
   # message(" numPath=", numPath, " T=", T)
   ## result is an 1 x numPath vector of gain at terminal T
@@ -217,6 +216,11 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
         }
         ctrlrReset[t] <- min( IL[t], abs(IS[t])/alpha )
       }
+      
+      # if (!missing(isShowPlot)) {
+      #   message("vResult=")
+      #   vResults[j,t] = V[t]
+      # }
     }
     
     g3mResult[j] = g[T_3m]
@@ -224,68 +228,60 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
     g1yResult[j] = g[T]
     v1yResult[j] = V[T]
   }
-
-  result = list(
-    gain3m    = g3mResult,
-    acctVal3m = v3mResult,
-    return3m  = (v3mResult - V0) / V0,
-    gain1y    = g1yResult,
-    acctVal1y = v1yResult,
-    return1y  = (v1yResult - V0) / V0,
-    allV  = allV
-    )
+  
+  time = (0:T)
+  # message("vResults=", length(price))
+  
+  result = list(gain3m    = g3mResult, 
+                acctVal3m = v3mResult, 
+                return3m  = (v3mResult-V0)/V0, 
+                gain1y    = g1yResult, 
+                acctVal1y = v1yResult,
+                return1y  = (v1yResult-V0)/V0,
+                allV  = allV)
   
   return(result)
 }
-
 getVaR <- function(samples, VaRValue) {
   samples = sort(samples)
   len = length(samples)
-  alpha = round(len * (1 - VaRValue))
+  alpha = round( len * (1-VaRValue) )
   VaR = -1 * samples[alpha]
   return(VaR)
 }
-
 getES <- function(inSamples, VaRValue) {
   sortedSamples = sort(inSamples)
   len = length(sortedSamples)
-  alpha = round(len * (1 - VaRValue))
-  ES = -1 * sum(sortedSamples[1:alpha]) / alpha
+  alpha = round( len * (1-VaRValue) )
+  ES = -1 * sum(sortedSamples[1:alpha])/alpha
   return(ES)
 }
 ```
 
-## GBM model stock price stimulation
+## GBM stock price stimulation
 ```{r gbm}
 library(quantmod)
-
 #download stock1 price
 S1 = getSymbols("AAPL", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)
 colnames(S1) = c("Open","High","Low","Close","Volume","Adjusted")
 S1_return = (S1$Close/lag(S1$Close,1)-1)[-1] 
-
 mu1 = mean(S1_return, na.rm=TRUE)
 sigma1 = sd(S1_return, na.rm=TRUE)
-
 #download stock2 price
 S2 = getSymbols("AMZN", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)
 colnames(S2) = c("Open","High","Low","Close","Volume","Adjusted")
 S2_return = (S2$Close/lag(S2$Close,1)-1)[-1]
-
 mu2 = mean(S2_return, na.rm=TRUE)
 sigma2 = sd(S2_return, na.rm=TRUE)
 rho = cor(S1_return,S2_return)
-
 # path = 100
 # T = 10
 dt = 1
 time = (0:T)
 nu1 = mu1-0.5*sigma1^2
 nu2 = mu2-0.5*sigma2^2
-
 logS1 = matrix( as.numeric(log(S1[nrow(S1),"Close"])), nrow=path, ncol=T+1 )	# n paths log price, col 1=last closing$
 logS2 = matrix( as.numeric(log(S2[nrow(S2),"Close"])), nrow=path, ncol=T+1 )	
-
 for (p in 1:path) {
   for (t in 1:T) {
     W1 = rnorm(1,0,1)
@@ -294,29 +290,24 @@ for (p in 1:path) {
     logS2[p, t+1] = logS2[p,t] + nu2 + sigma2*(rho*W1+sqrt(1-rho^2)*W2)
   }
 }
-
 S1_gen = exp(logS1)
 S2_gen = exp(logS2)
 #mean(log(S1_gen[,253]) - log(S1_gen[,1]))/252 # to check the mean
 matplot(time,t(S1_gen),type="l")
 #matplot(time,t(S2_gen),type="l")
-
 write.csv(S1_gen,'S1_gen.csv')
 write.csv(S2_gen,'S2_gen.csv')
 ```
 
-## GARCH model stock price stimulation
 ```{r Garch}
 library(quantmod)
 library(fGarch)
 ############# Parameters for Adjustment ##############
 # P = 100 # Number of Sample Path
 # T = 10  # Length of simulation Series
-
 ############# Download stock data and calculate log-returns ##############
 AAPL <- as.numeric(getSymbols("AAPL", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)$AAPL.Close)
 AMZN <- as.numeric(getSymbols("AMZN", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)$AMZN.Close)
-
 # Calculation Log-returns
 Data <- cbind(AAPL, AMZN)
 R <- apply(log(Data),2,diff)
@@ -326,7 +317,6 @@ AMZN_Return <- R[,2]
 par(mfrow=c(2,1))
 plot(AAPL_Return,type="l", xlab="Time", ylab = "AAPL", main="Log-returns for AAPL") # Plot log-return series to visualize heteroskedsticity
 plot(AMZN_Return,type="l", xlab="Time", ylab = "AMZN", main="Log-returns for AMZN")
-
 # Plot acf & pacf for return and squared return
 acf(AAPL_Return)
 acf(AMZN_Return)
@@ -336,13 +326,10 @@ acf(AAPL_Return^2)
 acf(AMZN_Return^2)
 pacf(AAPL_Return^2)
 pacf(AMZN_Return^2)
-
 # Intiate list for storing candidate models
 NormModel_1 <- vector("list", 6)
 NormModel_2 <- vector("list", 8)
-
 ############# Fit GARCH Model with normal innovations ###################
-
 invisible(capture.output(NormModel_1[[1]] <- garchFit(formula ~ garch(1,0),data = AAPL_Return))) 
 invisible(capture.output(NormModel_1[[2]] <- garchFit(formula ~ garch(1,1),data = AAPL_Return)))
 invisible(capture.output(NormModel_1[[3]] <- garchFit(formula ~ garch(1,2),data = AAPL_Return))) 
@@ -357,13 +344,11 @@ invisible(capture.output(NormModel_2[[5]] <- garchFit(formula ~ garch(2,1),data 
 invisible(capture.output(NormModel_2[[6]] <- garchFit(formula ~ garch(2,2),data = AMZN_Return)))
 invisible(capture.output(NormModel_2[[7]] <- garchFit(formula ~ garch(2,3),data = AMZN_Return)))
 invisible(capture.output(NormModel_2[[8]] <- garchFit(formula ~ garch(3,2),data = AMZN_Return)))
-
 # Extracing BICs for candidate models
 BIC1 <- as.numeric(sapply(1:6, function(i){NormModel_1[[i]]@fit$ics[2]}))
 BIC2 <- as.numeric(sapply(1:8, function(i){NormModel_2[[i]]@fit$ics[2]}))
 #tModel_1 <- garchFit(formula ~ garch(1,1),data = R[,1],cond.dist = "std",include.shape = F, shape  = 4)
 #tModel_2 <- garchFit(formula ~ garch(1,1),data = R[,2],cond.dist = "std",include.shape = F, shape = 4)
-
 # Choose optimal model
 NormModel_AAPL <- NormModel_1[[which.min(BIC1)]] # Choose the model with smallest BIC
 NormModel_AMZN <- NormModel_2[[2]] # GARCH(1,1) is more stable and parsimonious
@@ -372,11 +357,9 @@ Gcoef_AAPL <- NormModel_AAPL@fit$coef[-1] # storing omega, alpha, beta as in GAR
 mu_AMZN <- NormModel_AMZN@fit$coef[1] # storing mu as in R_t = mu + epsilon_t 
 Gcoef_AMZN <- NormModel_AMZN@fit$coef[-1] # storing omega, alpha, beta as in GARCH(1,1) model
 ########  Simulation Based on These Model #######
-
 ###  AAPL
-
 Sim_AAPL <- function(rept){
-    # set.seed(rept)
+  #set.seed(rept)
     Sim_AAPL_return_base <- as.numeric(rep(mu_AAPL, T+1)) # estimated mu in the model
     Sim_AAPL_residual <- rep(residuals(NormModel_AAPL)[length(AAPL_Return)], T+1) # last residual as appears in GARCH model for updating
     Sim_AAPL_sigma2 <- rep(volatility(NormModel_AAPL,type = "h")[length(AAPL_Return)], T+1) # last conditional variance as appears in GARCH model for updating
@@ -390,11 +373,10 @@ Sim_AAPL <- function(rept){
     Sim_AAPL_return[1] <- 0 ## This is artifically designed to make Sim_AAPL = the current price of AAPL
     Sim_AAPL <- as.numeric(exp(cumsum(Sim_AAPL_return)) * AAPL[length(AAPL)]) # S_t = S_0 * exp(R1 + ... + Rt)
 }
-
 #### AMZN
 # Just repeat what for AAPL
 Sim_AMZN <- function(rept){
-  # set.seed(rept)
+  #set.seed(rept)
   Sim_AMZN_return <- as.numeric(rep(mu_AMZN, T+1))
   Sim_AMZN_residual <- rep(residuals(NormModel_AMZN)[length(AMZN_Return)], T+1)
   Sim_AMZN_residual[1] <- residuals(NormModel_AMZN)[length(AMZN_Return)-1]
@@ -419,29 +401,27 @@ write.csv(Output_AMZN,'Output_AMZN.csv')
 ```
 
 ```{r BEKK}
+#install.packages("MTS")
+#install.packages("expm")
+#install.packages("MASS")
 library(MTS)
 library(expm)
 library(MASS)
 library(zoo)
 # Fit BEKK model (bivariate GARCH Model) use log return
-M2 <- BEKK11(R) # R is the 757 * 2 log-returns from independent GARCH
-
+ M2 <- BEKK11(R) # R is the 757 * 2 log-returns from independent GARCH
 # Extract coefficients/parameters in BEKK model and store them in vectors/matrices
 mu <- M2$estimates[1:2]
 C <- matrix(c(M2$estimates[3:4],0,M2$estimates[5]), byrow=F, nrow=2)
 A <- matrix(c(M2$estimates[6:9]), byrow=F, nrow=2)
 B <- matrix(c(M2$estimates[10:13]), byrow=F, nrow=2)
-
 # find the last day Residual vector and SIGMA matrix for simulation
 Last.Residual <- R[length(R[,1]),] - mu
 Last.SIGMA <- matrix(M2$Sigma.t[length(R[,1]),], nrow=2)
-
-
 # Simulation based on BEKK Model
 update_SIGMA <- function(SIGMA, Xi){
   update_SIGMA <- C %*% t(C) + A %*% (Xi %*% t(Xi)) %*% t(A) + B %*% SIGMA %*% t(B)
 }
-
 BEKK_Simu <- function(rept){
   Return_base <- matrix(rep((mu), T+1), nrow=2, byrow=F) # Constant mean vector
   SIGMA <- matrix(rep(Last.SIGMA,T+1), nrow=2, byrow=F) # For storing the conditional Variance Covariance Matrices
@@ -462,56 +442,50 @@ for (rept in 1:P){
   Output_BEKK_AAPL[rept,] <- temp[1,]
   Output_BEKK_AMZN[rept,] <- temp[2,]
 }
-
 write.csv(Output_BEKK_AAPL,'Output_BEKK_AAPL.csv')
 write.csv(Output_BEKK_AMZN,'Output_BEKK_AMZN.csv')
 ```
 
 
 ```{r data for analysis}
-simulationResults <- data.frame(
-  alpha = double(),
-  beta = double(),
-  K = double(),
-  VaR99_1y_GBM_S1 = double(),
-  VaR99_1y_GBM_S2 = double(),
-  VaR99_1y_GBM_PTFL = double(),
-  VaR99_1y_GARCH_S1 = double(),
-  VaR99_1y_GARCH_S2 = double(),
-  VaR99_1y_GARCH_PTFL = double(),
-  ES99_1y_GBM_S1 = double(),
-  ES99_1y_GBM_S2 = double(),
-  ES99_1y_GBM_PTFL = double(),
-  ES99_1y_GARCH_S1 = double(),
-  ES99_1y_GARCH_S2 = double(),
-  ES99_1y_GARCH_PTFL = double(),
-  VaR99_3m_GBM_S1 = double(),
-  VaR99_3m_GBM_S2 = double(),
-  VaR99_3m_GBM_PTFL = double(),
-  VaR99_3m_GARCH_S1 = double(),
-  VaR99_3m_GARCH_S2 = double(),
-  VaR99_3m_GARCH_PTFL = double(),
-  ES99_3m_GBM_S1 = double(),
-  ES99_3m_GBM_S2 = double(),
-  ES99_3m_GBM_PTFL = double(),
-  ES99_3m_GARCH_S1 = double(),
-  ES99_3m_GARCH_S2 = double(),
-  ES99_3m_GARCH_PTFL = double()
-  )
-
+simulationResults <- data.frame(alpha=double(),
+                        beta=double(),
+                        K=double(),
+                        VaR99_1y_GBM_S1=double(), 
+                        VaR99_1y_GBM_S2=double(), 
+                        VaR99_1y_GBM_PTFL=double(), 
+                        VaR99_1y_GARCH_S1=double(), 
+                        VaR99_1y_GARCH_S2=double(), 
+                        VaR99_1y_GARCH_PTFL=double(), 
+                        ES99_1y_GBM_S1=double(), 
+                        ES99_1y_GBM_S2=double(), 
+                        ES99_1y_GBM_PTFL=double(), 
+                        ES99_1y_GARCH_S1=double(), 
+                        ES99_1y_GARCH_S2=double(), 
+                        ES99_1y_GARCH_PTFL=double(),
+                        VaR99_3m_GBM_S1=double(), 
+                        VaR99_3m_GBM_S2=double(), 
+                        VaR99_3m_GBM_PTFL=double(), 
+                        VaR99_3m_GARCH_S1=double(), 
+                        VaR99_3m_GARCH_S2=double(), 
+                        VaR99_3m_GARCH_PTFL=double(), 
+                        ES99_3m_GBM_S1=double(), 
+                        ES99_3m_GBM_S2=double(), 
+                        ES99_3m_GBM_PTFL=double(), 
+                        ES99_3m_GARCH_S1=double(), 
+                        ES99_3m_GARCH_S2=double(), 
+                        ES99_3m_GARCH_PTFL=double()
+                        )
 sum_V_0 = sum(V_0)
-
 for (a in seq(from=0.5, to=1.5, by=0.5)) {
   for (b in seq(from=0.5, to=1.5, by=0.5)) {
     for (k in seq(from=1, to=5, by=2)) {
-
       # rs stands for result set
       rsS1 <- GSLS(S1_gen, I0=I_0[1], V0=V_0[1], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
       rsS2 <- GSLS(S2_gen, I0=I_0[2], V0=V_0[2], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
       
       rsAAPL <- GSLS(Output_AAPL, I0=I_0[1], V0=V_0[1], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
       rsAMZN <- GSLS(Output_AMZN, I0=I_0[2], V0=V_0[2], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
-
       rsBEKK_AAPL <- GSLS(Output_BEKK_AAPL, I0=I_0[1], V0=V_0[1], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
       rsBEKK_AMZN <- GSLS(Output_BEKK_AMZN, I0=I_0[2], V0=V_0[2], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
       
@@ -542,6 +516,11 @@ for (a in seq(from=0.5, to=1.5, by=0.5)) {
       hist( garchPftlRet3m, main=paste("Histogram of Portfolio Return under GARCH Model with alpha =", a, " beta =", b, " K=", k, "T = 3 Months"), xlim =c(min(garchPftlRet3m)-0.1, max(garchPftlRet3m)+0.1),breaks = 20, xlab="Return")
       dens=density(garchPftlRet3m)
       lines(dens$x,length(garchPftlRet3m) * (max(garchPftlRet3m) - min(garchPftlRet3m)) *dens$y / 20) 
+      
+      # ggplot(gbmPftlRet3m, aes(x=gbmPftlRet3m)) +  geom_histogram( aes(y=..density..), color="black", fill="white") + geom_vline(aes(xintercept=mean(gbmPftlRet3m)), color="blue", linetype="dashed", size=1) + geom_density(alpha=.2, fill="#FF6666")
+           # ggplot(rsS1, aes(x=rsS1$return3m)) +  geom_histogram( aes(y=..density..), color="black", fill="white") + geom_vline(aes(xintercept=mean(rsS1$return3m)), color="blue", linetype="dashed", size=1) + geom_density(alpha=.2, fill="#FF6666")
+      
+      # ggplot(df, aes(x=df$Close)) +  geom_histogram( aes(y=..density..), color="black", fill="white") + geom_vline(aes(xintercept=mean(df$Close-500)), color="blue", linetype="dashed", size=1) + geom_density(alpha=.2, fill="#FF6666") 
             
       # plot contour
       sample = apply( (rsBS_ptfl$allV - sum_V_0) / sum_V_0, 2, quantile, probs=c(0.01, 0.5, 0.99))
@@ -550,7 +529,6 @@ for (a in seq(from=0.5, to=1.5, by=0.5)) {
       lines(sample[2,],col="Red",lwd=2)
       lines(sample[3,],col="Red",lwd=2)
       #plot(c(1:253, 1:253, 1:253), c(sample[1,],sample[2,],sample[3,]), type="l", main=paste("Contour of Portfolio Simulation based on GBM Model", "alpha =", a, " beta =", b, " K=", k), xlab="time", ylab="pct return")
-
       sample = apply( (rsBEKK_ptfl$allV - sum_V_0) / sum_V_0, 2, quantile, probs=c(0.01, 0.5, 0.99))
       plot.zoo(t((rsBEKK_ptfl$allV - sum_V_0) / sum_V_0), main = paste("Sample Return Paths and Empirical Confidence Envolope (BEKK Model)", "alpha =", a, " beta =", b, " K=", k), xlab="t", ylab="Portfolio Return", plot.type = "single")
       lines(sample[1,],col="Red",lwd=2)
@@ -559,53 +537,47 @@ for (a in seq(from=0.5, to=1.5, by=0.5)) {
       #plot(c(1:253, 1:253, 1:253), c(sample[1,],sample[2,],sample[3,]), type="l", main=paste("ontour of Portfolio Simulation based on BEKK Model", "alpha =", a, " beta =", b, " K=", k), xlab="time", ylab="pct return")
       
       #save stimulation result
-      stimulationRec <- data.frame(
-        alpha = a,
-        beta = b,
-        K = k,
-        ### 3 mths
-        VaR99_3m_GBM_S1    = getVaR(rsS1$return3m, pct99),
-        VaR99_3m_GBM_S2    = getVaR(rsS2$return3m, pct99),
-        VaR99_3m_GBM_PTFL  = getVaR(gbmPftlRet3m, pct99),
-        
-        VaR99_3m_GARCH_S1  = getVaR(rsAAPL$return3m, pct99),
-        VaR99_3m_GARCH_S2  = getVaR(rsAMZN$return3m, pct99),
-        VaR99_3m_GARCH_PTFL = getVaR(garchPftlRet3m, pct99),
-        
-        ES99_3m_GBM_S1     = getES(rsS1$return3m, pct99),
-        ES99_3m_GBM_S2     = getES(rsS2$return3m, pct99),
-        ES99_3m_GBM_PTFL   = getES(gbmPftlRet3m, pct99),
-        
-        ES99_3m_GARCH_S1   = getES(rsAAPL$return3m, pct99),
-        ES99_3m_GARCH_S2   = getES(rsAMZN$return3m, pct99),
-        ES99_3m_GARCH_PTFL = getES(garchPftlRet3m, pct99),
-        
-        ### 1 year
-        VaR99_1y_GBM_S1    = getVaR(rsS1$return1y, pct99),
-        VaR99_1y_GBM_S2    = getVaR(rsS2$return1y, pct99),
-        VaR99_1y_GBM_PTFL  = getVaR(gbmPftlRet1y, pct99),
-        
-        VaR99_1y_GARCH_S1  = getVaR(rsAAPL$return1y, pct99),
-        VaR99_1y_GARCH_S2  = getVaR(rsAMZN$return1y, pct99),
-        VaR99_1y_GARCH_PTFL = getVaR(garchPftlRet1y, pct99),
-        
-        ES99_1y_GBM_S1     = getES(rsS1$return1y, pct99),
-        ES99_1y_GBM_S2     = getES(rsS2$return1y, pct99),
-        ES99_1y_GBM_PTFL   = getES(gbmPftlRet1y, pct99),
-        
-        ES99_1y_GARCH_S1   = getES(rsAAPL$return1y, pct99),
-        ES99_1y_GARCH_S2   = getES(rsAMZN$return1y, pct99),
-        ES99_1y_GARCH_PTFL = getES(garchPftlRet1y, pct99)
-        )
-      
+      stimulationRec <- data.frame(alpha=a,
+                        beta=b,
+                        K=k,
+                        ### 3 mths
+                        VaR99_3m_GBM_S1    =getVaR(rsS1$return3m, pct99), 
+                        VaR99_3m_GBM_S2    =getVaR(rsS2$return3m, pct99), 
+                        VaR99_3m_GBM_PTFL  =getVaR(gbmPftlRet3m, pct99), 
+                                                   
+                        VaR99_3m_GARCH_S1  =getVaR(rsAAPL$return3m, pct99), 
+                        VaR99_3m_GARCH_S2  =getVaR(rsAMZN$return3m, pct99), 
+                        VaR99_3m_GARCH_PTFL=getVaR(garchPftlRet3m, pct99), 
+                        
+                        ES99_3m_GBM_S1     =getES(rsS1$return3m, pct99), 
+                        ES99_3m_GBM_S2     =getES(rsS2$return3m, pct99), 
+                        ES99_3m_GBM_PTFL   =getES(gbmPftlRet3m, pct99), 
+                        
+                        ES99_3m_GARCH_S1   =getES(rsAAPL$return3m, pct99), 
+                        ES99_3m_GARCH_S2   =getES(rsAMZN$return3m, pct99), 
+                        ES99_3m_GARCH_PTFL =getES(garchPftlRet3m, pct99),
+                        
+                        ### 1 year
+                        VaR99_1y_GBM_S1    =getVaR(rsS1$return1y, pct99), 
+                        VaR99_1y_GBM_S2    =getVaR(rsS2$return1y, pct99), 
+                        VaR99_1y_GBM_PTFL  =getVaR(gbmPftlRet1y, pct99), 
+                        
+                        VaR99_1y_GARCH_S1  =getVaR(rsAAPL$return1y, pct99), 
+                        VaR99_1y_GARCH_S2  =getVaR(rsAMZN$return1y, pct99), 
+                        VaR99_1y_GARCH_PTFL=getVaR(garchPftlRet1y, pct99), 
+                        
+                        ES99_1y_GBM_S1     =getES(rsS1$return1y, pct99), 
+                        ES99_1y_GBM_S2     =getES(rsS2$return1y, pct99), 
+                        ES99_1y_GBM_PTFL   =getES(gbmPftlRet1y, pct99), 
+                        
+                        ES99_1y_GARCH_S1   =getES(rsAAPL$return1y, pct99), 
+                        ES99_1y_GARCH_S2   =getES(rsAMZN$return1y, pct99), 
+                        ES99_1y_GARCH_PTFL =getES(garchPftlRet1y, pct99)
+                        )
       simulationResults <- rbind(simulationResults, stimulationRec)
     }
   }
 }
-
 # setwd("C:/Documents and Settings/Data")
 write.csv(simulationResults,'simulationResults.csv')
 ```
-
-
-
