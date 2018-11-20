@@ -524,13 +524,13 @@ for (a in seq(from=0.5, to=1.5, by=0.5)) {
             
       # plot contour
       sample = apply( (rsBS_ptfl$allV - sum_V_0) / sum_V_0, 2, quantile, probs=c(0.01, 0.5, 0.99))
-      plot.zoo(t( (rsBS_ptfl$allV - sum_V_0) / sum_V_0 ), main = paste("Sample Return Paths and Empirical Confidence Envolope (BS Model)", "alpha =", a, " beta =", b, " K=", k), xlab="t", ylab="Portfolio Return", plot.type = "single")
+      plot.zoo(t( (rsBS_ptfl$allV - sum_V_0) / sum_V_0 ), main = paste("Sample Return Paths and Empirical Confidence Envelope (BS Model)", "alpha =", a, " beta =", b, " K=", k), xlab="t", ylab="Portfolio Return", plot.type = "single")
       lines(sample[1,],col="Red",lwd=2)
       lines(sample[2,],col="Red",lwd=2)
       lines(sample[3,],col="Red",lwd=2)
       #plot(c(1:253, 1:253, 1:253), c(sample[1,],sample[2,],sample[3,]), type="l", main=paste("Contour of Portfolio Simulation based on GBM Model", "alpha =", a, " beta =", b, " K=", k), xlab="time", ylab="pct return")
       sample = apply( (rsBEKK_ptfl$allV - sum_V_0) / sum_V_0, 2, quantile, probs=c(0.01, 0.5, 0.99))
-      plot.zoo(t((rsBEKK_ptfl$allV - sum_V_0) / sum_V_0), main = paste("Sample Return Paths and Empirical Confidence Envolope (BEKK Model)", "alpha =", a, " beta =", b, " K=", k), xlab="t", ylab="Portfolio Return", plot.type = "single")
+      plot.zoo(t((rsBEKK_ptfl$allV - sum_V_0) / sum_V_0), main = paste("Sample Return Paths and Empirical Confidence Envelope (BEKK Model)", "alpha =", a, " beta =", b, " K=", k), xlab="t", ylab="Portfolio Return", plot.type = "single")
       lines(sample[1,],col="Red",lwd=2)
       lines(sample[2,],col="Red",lwd=2)
       lines(sample[3,],col="Red",lwd=2)
