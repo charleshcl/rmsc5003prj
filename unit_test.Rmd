@@ -144,9 +144,11 @@ rsS2 <- GSLS(S2_gen, I0=I_0[2], V0=V_0[2], alpha=a, beta=b, gamma=g, K=k, r=dail
 ggplot(data =)
 ```
 
-```{r historic data of 2008-2009 }
-price_AAPL <- as.numeric(getSymbols("AAPL", from ="2008-03-01", to = "2009-03-03", auto.assign = FALSE)$AAPL.Close)
-price_AMZN <- as.numeric(getSymbols("AMZN", from ="2008-03-01", to = "2009-03-03", auto.assign = FALSE)$AMZN.Close)
+```{r historic data of 2007}
+price_AAPL <- as.numeric(getSymbols("AAPL", from ="2007-01-01", to = "2008-01-03", auto.assign = FALSE)$AAPL.Close)
+price_AMZN <- as.numeric(getSymbols("AMZN", from ="2007-01-01", to = "2008-01-03", auto.assign = FALSE)$AMZN.Close)
+
+length(price_AAPL)
 
 S_AAPL = matrix(price_AAPL, ncol=252)
 S_AMZN = matrix(price_AMZN, ncol=252)
@@ -159,3 +161,30 @@ rs_hist1$return1y
 rs_hist2$return1y 
 rs_ptfl_hist$return1y
 ```
+
+```{r historic data of 2008 }
+price_AAPL <- as.numeric(getSymbols("AAPL", from ="2008-01-01", to = "2008-12-31", auto.assign = FALSE)$AAPL.Close)
+price_AMZN <- as.numeric(getSymbols("AMZN", from ="2008-01-01", to = "2008-12-31", auto.assign = FALSE)$AMZN.Close)
+
+length(price_AAPL)
+
+S_AAPL = matrix(price_AAPL, ncol=252)
+S_AMZN = matrix(price_AMZN, ncol=252)
+
+rs_hist1   <- GSLS(price = S_AAPL, I0 = I_0[1], V0 = V_0[1], alpha = a, beta = b, gamma = g, K = k, r=dailyRiskFeeRate, Imin = I_min)
+rs_hist2   <- GSLS(price = S_AMZN, I0 = I_0[2], V0 = V_0[2], alpha = a, beta = b, gamma = g, K = k, r=dailyRiskFeeRate, Imin = I_min)
+rs_ptfl_hist   <- GSLS_Ptfl(price1 = S_AAPL, price2 = S_AMZN, I0 = I_0, V0 = sum(V_0), alpha = a, beta = b, gamma = g, K = k, r=dailyRiskFeeRate, Imin = I_min)
+
+rs_hist1$return1y
+rs_hist2$return1y 
+rs_ptfl_hist$return1y
+```
+```{r get stock data}
+price_APPL = getSymbols("AAPL", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)
+price_AMZN = getSymbols("AMZN", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)
+
+save(price_AAPL, price_AMZN, file = "StockPriceData.rda")
+rm(price_AAPL, price_AMZN)
+load(file = "StockPriceData.rda")
+```
+
