@@ -508,9 +508,9 @@ simulationResults <- data.frame(alpha=double(),
                         ES99_3m_GARCH_PTFL=double()
                         )
 sum_V_0 = sum(V_0)
-for (a in seq(from=0.5, to=0.5, by=0.5)) {
-  for (b in seq(from=0.5, to=0.5, by=0.5)) {
-    for (k in seq(from=1, to=1, by=2)) {
+for (a in seq(from=0.5, to=1.5, by=0.5)) {
+  for (b in seq(from=0.5, to=1.5, by=0.5)) {
+    for (k in seq(from=1, to=5, by=2)) {
       # rs stands for result set
       rsS1 <- GSLS(S1_gen, I0=I_0[1], V0=V_0[1], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
       rsS2 <- GSLS(S2_gen, I0=I_0[2], V0=V_0[2], alpha=a, beta=b, gamma=g, K=k, r=dailyRiskFeeRate, Imin=I_min)
