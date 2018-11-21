@@ -19,19 +19,22 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Global variables
 ```{r global variables}
-P = 10000 # Number of Sample Path
-# P = 10000 # Number of Sample Path
+P = 100 # Number of Sample Path
 path = P
-T = 252  # Length of simulation Series
-T_1y = 252
+#T = 252  # Length of simulation Series
+#T_1y = 252
+T_1m = 21
 T_3m = 63 # T_1y / 4
 # parameters
-dailyRiskFeeRate = 0.026/360 #daily rate
-g     = 1.5
-I_0   = c(1000000, 1000000) #Initial investment level I_0 for each stock in portfolio
-V_0   = c(1000000, 1000000) #Initial account value V_0 for each stock in portfolio
-I_min = 1000000 * 0.4   # 40% of initial investment level
+#r_1m = 0.0223/360 #daily rate for one-month investment
+#r_3m = 0.0234/360 #daily rate for three-month investment
+dailyRiskFeeRate <- 0.024585/360
+g    = 2 
+I_0  = c(1000000, 1000000) #Initial investment level I_0 for each stock in portfolio
+V_0  = c(1000000, 1000000) #Initial account value V_0 for each stock in portfolio
+I_min = 1000000 * 0.2   # 20% of initial investment level
 pct99 = 0.99
+pct95 = 0.95
 ```
 
 ## Helper Functions 
@@ -40,11 +43,12 @@ pct99 = 0.99
 ## price: n by t matrix
 ##   n: number of paths
 ##   t: must be 252 days, which is one year trading days
+
 GSLS_Ptfl <- function(price1, price2, I0, V0, alpha, beta, gamma, K, r, Imin) {
   
   ## core function begin
   numPath = nrow(price1)
-  T       = ncol(price1)   #expected 253
+  T       = ncol(price1)   
   
   ## Check for Inconsistency
   if ((numPath != nrow(price2)) | (T != ncol(price2))) {
@@ -52,8 +56,8 @@ GSLS_Ptfl <- function(price1, price2, I0, V0, alpha, beta, gamma, K, r, Imin) {
   }
   
   ## result is an 1 x numPath vector of gain at terminal T
-  v3mResult = rep(0,numPath)
-  v1yResult = rep(0,numPath)
+  vResult = rep(0,numPath)
+  gResult = rep(0,numPath)
   
   allV = matrix(rep(0,T*numPath), nrow=numPath)
   
@@ -80,8 +84,8 @@ GSLS_Ptfl <- function(price1, price2, I0, V0, alpha, beta, gamma, K, r, Imin) {
         IS[,t] <- -alpha*I0
         V[t]  <- V0
         I[,t]  <- IL[,t] + IS[,t]
-        ctrlrReset[1,t] <- min(IL[1,t], abs(IS[1,t]))
-        ctrlrReset[2,t] <- min(IL[2,t], abs(IS[2,t]))
+        ctrlrReset[1,t] <- min(IL[1,t], abs(IS[1,t])/alpha)
+        ctrlrReset[2,t] <- min(IL[2,t], abs(IS[2,t])/alpha)
         allV[j,t] = V[t]
       } else {
         rho[1,t] <- (price1[j,t] - price1[j,t-1]) / price1[j,t-1]
@@ -93,38 +97,34 @@ GSLS_Ptfl <- function(price1, price2, I0, V0, alpha, beta, gamma, K, r, Imin) {
         # for plotting return path
         allV[j,t] = V[t]
         # message("V=", V[t])
-        if (ctrlrReset[1,t-1] >= Imin) {
-          #normal case
+        
+        
+        # CHANGE:  should update I[,t] first 
           IL[1,t]  <- max( (1+K*rho[1,t])*IL[1,t-1],0 )
           IS[1,t]  <- min( (1-beta*K*rho[1,t])*IS[1,t-1], 0 )
+          IL[2,t]  <- max( (1+K*rho[2,t])*IL[2,t-1],0 )
+          IS[2,t]  <- min( (1-beta*K*rho[2,t])*IS[2,t-1], 0 )
+          ctrlrReset[1,t] <- min(IL[1,t], abs(IS[1,t])/alpha)
+          ctrlrReset[2,t] <- min(IL[2,t], abs(IS[2,t])/alpha) 
           
-        } else {  
+          
+        if (ctrlrReset[1,t] < Imin)  {  
           # controller reset
           IL[1,t]  <- IL[1,1]
           IS[1,t]  <- IS[1,1]
-          I[1,t] <- 0
         }
-        if (ctrlrReset[2,t-1] >= Imin) {
-          #normal case
-          IL[2,t]  <- max( (1+K*rho[2,t])*IL[2,t-1],0 )
-          IS[2,t]  <- min( (1-beta*K*rho[2,t])*IS[2,t-1], 0 )
-          
-        } else {  
+        if (ctrlrReset[2,t] < Imin) {
           # controller reset
           IL[2,t]  <- IL[2,1]
           IS[2,t]  <- IS[2,1]
-          I[2,t] <- 0
-          gL[2,t] <- 0 # g function also need to be reset 
-          gS[2,t] <- 0
-          g[2,t]  <- gL[2,t] + gS[2,t]
         }
+          I[,t] <- IL[,t] + IS[,t]
         # In a margin call, IL and IS need to be adjusted accordingly
         if (sum(abs(I[,t])) > gamma*V[t-1]){
           IL[,t]  <- IL[,t] * gamma*V[t-1] /(sum(abs(I[,t])))
           IS[,t]  <- IS[,t] * gamma*V[t-1] /(sum(abs(I[,t])))
           I[,t] <- IL[,t] + IS[,t]
         }
-        ctrlrReset[,t] <- min( IL[,t], abs(IS[,t])/alpha )
       }
       
       # if (!missing(isShowPlot)) {
@@ -132,17 +132,17 @@ GSLS_Ptfl <- function(price1, price2, I0, V0, alpha, beta, gamma, K, r, Imin) {
       #   vResults[j,t] = V[t]
       # }
     }
-    v3mResult[j] = V[T_3m]
-    v1yResult[j] = V[T]
+    vResult[j] = V[T]
+    gResult[j] = sum(g[,T])
   }
   
   time = (0:T)
   # message("vResults=", length(price))
   
-  result = list(      acctVal3m = v3mResult, 
-                      return3m  = (v3mResult-V0)/V0, 
-                      acctVal1y = v1yResult,
-                      return1y  = (v1yResult-V0)/V0,
+  result = list(      acctVal = vResult, 
+                      Invest = I,
+                      return  = (vResult-V0)/V0, 
+                      gain = gResult,
                       allV  = allV)
   
   return(result)
@@ -597,11 +597,11 @@ rs_ptfl_hist$return1y
 ```
 
 ```{r historic data of 2008 }
-price_AAPL <- as.numeric(getSymbols("AAPL", from ="2008-01-01", to = "2008-12-31", auto.assign = FALSE)$AAPL.Close)
-price_AMZN <- as.numeric(getSymbols("AMZN", from ="2008-01-01", to = "2008-12-31", auto.assign = FALSE)$AMZN.Close)
+price_AAPL <- as.numeric(getSymbols("AAPL", from ="2008-09-01", to = "2008-12-31", auto.assign = FALSE)$AAPL.Close)
+price_AMZN <- as.numeric(getSymbols("AMZN", from ="2008-09-01", to = "2008-12-31", auto.assign = FALSE)$AMZN.Close)
 length(price_AAPL)
-S_AAPL = matrix(price_AAPL, ncol=252)
-S_AMZN = matrix(price_AMZN, ncol=252)
+S_AAPL = matrix(price_AAPL, ncol=length(price_AAPL))
+S_AMZN = matrix(price_AMZN, ncol=length(price_AMZN))
 rs_hist1   <- GSLS(price = S_AAPL, I0 = I_0[1], V0 = V_0[1], alpha = a, beta = b, gamma = g, K = k, r=dailyRiskFeeRate, Imin = I_min)
 rs_hist2   <- GSLS(price = S_AMZN, I0 = I_0[2], V0 = V_0[2], alpha = a, beta = b, gamma = g, K = k, r=dailyRiskFeeRate, Imin = I_min)
 rs_ptfl_hist   <- GSLS_Ptfl(price1 = S_AAPL, price2 = S_AMZN, I0 = I_0, V0 = sum(V_0), alpha = a, beta = b, gamma = g, K = k, r=dailyRiskFeeRate, Imin = I_min)
