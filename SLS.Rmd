@@ -19,7 +19,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Global variables
 ```{r global variables}
-P =500 # Number of Sample Path
+P =10000 # Number of Sample Path
 # P = 10000 # Number of Sample Path
 path = P
 T = 63   # Length of simulation Series
