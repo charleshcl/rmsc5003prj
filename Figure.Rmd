@@ -1,30 +1,12 @@
 ---
-title: "RMSC5003 Project"
+title: "Figures"
 output:
   word_document: default
-  pdf_document: default
   html_document: default
 ---
 
-## Set Up
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-# install.packages("quantmod")
-# install.packages("fGarch")
-# install.packages("MTS")
-# install.packages("expm")
-# install.packages("MASS")
-# install.packages("zoo")
-```
-
-## Get stock price
-```{r get stock price}
-library(quantmod)
-
-price_AAPL = getSymbols("AAPL", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)
-price_AMZN = getSymbols("AMZN", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)
-
-save(price_AAPL, price_AMZN, file = "StockPriceData.rda")
 ```
 
 ## Global variables
@@ -146,8 +128,8 @@ GSLS_Ptfl <- function(price1, price2, I0, V0, alpha, beta, gamma, K, r, Imin) {
     vResult[j] = V[T]
     gResult[j] = sum(g[,T])
     
-    v1mResult[j] = V[T_1m + 1]
-    v3mResult[j] = V[T_3m + 1]
+    v1mResult[j] = V[T_1m]
+    v3mResult[j] = V[T_3m]
   }
   
   result = list(      acctVal = vResult, 
@@ -231,10 +213,10 @@ GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
       }
     }
     
-    g3mResult[j] = g[T_3m + 1]
-    v3mResult[j] = V[T_3m + 1]
-    g1mResult[j] = g[T_1m + 1]
-    v1mResult[j] = V[T_1m + 1]
+    g3mResult[j] = g[T_3m]
+    v3mResult[j] = V[T_3m]
+    g1mResult[j] = g[T_1m]
+    v1mResult[j] = V[T_1m]
   }
 
   result = list(gain3m    = g3mResult, 
@@ -265,198 +247,12 @@ getES <- function(inSamples, VaRValue) {
 }
 ```
 
-## GBM stock price stimulation
-```{r gbm}
-library(quantmod)
-#download stock1 price
-S1 = getSymbols("AAPL", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)
-colnames(S1) = c("Open","High","Low","Close","Volume","Adjusted")
-S1_return = (S1$Close/lag(S1$Close,1)-1)[-1] 
-mu1 = mean(S1_return, na.rm=TRUE)
-sigma1 = sd(S1_return, na.rm=TRUE)
-#download stock2 price
-S2 = getSymbols("AMZN", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)
-colnames(S2) = c("Open","High","Low","Close","Volume","Adjusted")
-S2_return = (S2$Close/lag(S2$Close,1)-1)[-1]
-mu2 = mean(S2_return, na.rm=TRUE)
-sigma2 = sd(S2_return, na.rm=TRUE)
-rho = cor(S1_return,S2_return)
-# path = 100
-# T = 10
-dt = 1
-time = (0:T)
-nu1 = mu1-0.5*sigma1^2
-nu2 = mu2-0.5*sigma2^2
-logS1 = matrix( as.numeric(log(S1[nrow(S1),"Close"])), nrow=path, ncol=T+1 )	# n paths log price, col 1=last closing$
-logS2 = matrix( as.numeric(log(S2[nrow(S2),"Close"])), nrow=path, ncol=T+1 )	
-for (p in 1:path) {
-  for (t in 1:T) {
-    W1 = rnorm(1,0,1)
-    W2 = rnorm(1,0,1)
-    logS1[p, t+1] = logS1[p,t] + nu1 + sigma1*W1
-    logS2[p, t+1] = logS2[p,t] + nu2 + sigma2*(rho*W1+sqrt(1-rho^2)*W2)
-  }
-}
-S1_gen = exp(logS1)
-S2_gen = exp(logS2)
-#mean(log(S1_gen[,253]) - log(S1_gen[,1]))/252 # to check the mean
-matplot(time,t(S1_gen),type="l")
-matplot(time,t(S2_gen),type="l")
-save(S1_gen, S2_gen, file='gbmData.rda')
-```
-
-```{r Garch}
-library(quantmod)
-library(fGarch)
-############# Parameters for Adjustment ##############
-# P = 100 # Number of Sample Path
-# T = 10  # Length of simulation Series
-############# Download stock data and calculate log-returns ##############
-AAPL <- as.numeric(getSymbols("AAPL", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)$AAPL.Close)
-AMZN <- as.numeric(getSymbols("AMZN", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)$AMZN.Close)
-# Calculation Log-returns
-Data <- cbind(AAPL, AMZN)
-R <- apply(log(Data),2,diff)
-AAPL_Return <- R[,1]
-AMZN_Return <- R[,2]
-# Plot returns
-par(mfrow=c(2,1))
-plot(AAPL_Return,type="l", xlab="Time", ylab = "AAPL", main="Log-returns for AAPL") # Plot log-return series to visualize heteroskedsticity
-plot(AMZN_Return,type="l", xlab="Time", ylab = "AMZN", main="Log-returns for AMZN")
-# Plot acf & pacf for return and squared return
-acf(AAPL_Return)
-acf(AMZN_Return)
-pacf(AAPL_Return)
-pacf(AMZN_Return)
-acf(AAPL_Return^2)
-acf(AMZN_Return^2)
-pacf(AAPL_Return^2)
-pacf(AMZN_Return^2)
-# Intiate list for storing candidate models
-NormModel_1 <- vector("list", 6)
-NormModel_2 <- vector("list", 8)
-############# Fit GARCH Model with normal innovations ###################
-invisible(capture.output(NormModel_1[[1]] <- garchFit(formula ~ garch(1,0),data = AAPL_Return))) 
-invisible(capture.output(NormModel_1[[2]] <- garchFit(formula ~ garch(1,1),data = AAPL_Return)))
-invisible(capture.output(NormModel_1[[3]] <- garchFit(formula ~ garch(1,2),data = AAPL_Return))) 
-invisible(capture.output(NormModel_1[[4]] <- garchFit(formula ~ garch(2,0),data = AAPL_Return))) 
-invisible(capture.output(NormModel_1[[5]] <- garchFit(formula ~ garch(2,1),data = AAPL_Return))) 
-invisible(capture.output(NormModel_1[[6]] <- garchFit(formula ~ garch(2,2),data = AAPL_Return))) 
-invisible(capture.output(NormModel_2[[1]] <- garchFit(formula ~ garch(1,0),data = AMZN_Return))) 
-invisible(capture.output(NormModel_2[[2]] <- garchFit(formula ~ garch(1,1),data = AMZN_Return)))
-invisible(capture.output(NormModel_2[[3]] <- garchFit(formula ~ garch(1,2),data = AMZN_Return)))
-invisible(capture.output(NormModel_2[[4]] <- garchFit(formula ~ garch(2,0),data = AMZN_Return)))
-invisible(capture.output(NormModel_2[[5]] <- garchFit(formula ~ garch(2,1),data = AMZN_Return)))
-invisible(capture.output(NormModel_2[[6]] <- garchFit(formula ~ garch(2,2),data = AMZN_Return)))
-invisible(capture.output(NormModel_2[[7]] <- garchFit(formula ~ garch(2,3),data = AMZN_Return)))
-invisible(capture.output(NormModel_2[[8]] <- garchFit(formula ~ garch(3,2),data = AMZN_Return)))
-# Extracing BICs for candidate models
-BIC1 <- as.numeric(sapply(1:6, function(i){NormModel_1[[i]]@fit$ics[2]}))
-BIC2 <- as.numeric(sapply(1:8, function(i){NormModel_2[[i]]@fit$ics[2]}))
-#tModel_1 <- garchFit(formula ~ garch(1,1),data = R[,1],cond.dist = "std",include.shape = F, shape  = 4)
-#tModel_2 <- garchFit(formula ~ garch(1,1),data = R[,2],cond.dist = "std",include.shape = F, shape = 4)
-# Choose optimal model
-NormModel_AAPL <- NormModel_1[[which.min(BIC1)]] # Choose the model with smallest BIC
-NormModel_AMZN <- NormModel_2[[2]] # GARCH(1,1) is more stable and parsimonious
-mu_AAPL <- NormModel_AAPL@fit$coef[1] # storing mu as in R_t = mu + epsilon_t 
-Gcoef_AAPL <- NormModel_AAPL@fit$coef[-1] # storing omega, alpha, beta as in GARCH(1,1) model
-mu_AMZN <- NormModel_AMZN@fit$coef[1] # storing mu as in R_t = mu + epsilon_t 
-Gcoef_AMZN <- NormModel_AMZN@fit$coef[-1] # storing omega, alpha, beta as in GARCH(1,1) model
-########  Simulation Based on These Model #######
-###  AAPL
-Sim_AAPL <- function(rept){
-  #set.seed(rept)
-    Sim_AAPL_return_base <- as.numeric(rep(mu_AAPL, T+1)) # estimated mu in the model
-    Sim_AAPL_residual <- rep(residuals(NormModel_AAPL)[length(AAPL_Return)], T+1) # last residual as appears in GARCH model for updating
-    Sim_AAPL_sigma2 <- rep(volatility(NormModel_AAPL,type = "h")[length(AAPL_Return)], T+1) # last conditional variance as appears in GARCH model for updating
-    # Updating sigma_t^2 and epsilon_t recursively according to GARCH model
-    for (i in 2:(T+1)){
-      temp <- c(1,Sim_AAPL_residual[i-1]^2,Sim_AAPL_sigma2[i-1])
-      Sim_AAPL_sigma2[i] <- t(temp) %*% Gcoef_AAPL
-      Sim_AAPL_residual[i] <- sqrt(Sim_AAPL_sigma2[i]) * rnorm(1)
-    }
-    Sim_AAPL_return <- Sim_AAPL_return_base + Sim_AAPL_residual # as in R_t = mu (return_base) + epsilon_t(residual)
-    Sim_AAPL_return[1] <- 0 ## This is artifically designed to make Sim_AAPL = the current price of AAPL
-    Sim_AAPL <- as.numeric(exp(cumsum(Sim_AAPL_return)) * AAPL[length(AAPL)]) # S_t = S_0 * exp(R1 + ... + Rt)
-}
-#### AMZN
-# Just repeat what for AAPL
-Sim_AMZN <- function(rept){
-  #set.seed(rept)
-  Sim_AMZN_return <- as.numeric(rep(mu_AMZN, T+1))
-  Sim_AMZN_residual <- rep(residuals(NormModel_AMZN)[length(AMZN_Return)], T+1)
-  Sim_AMZN_residual[1] <- residuals(NormModel_AMZN)[length(AMZN_Return)-1]
-  Sim_AMZN_sigma2 <- rep(volatility(NormModel_AMZN,type = "h")[length(AMZN_Return)], T+1)
-  Sim_AMZN_sigma2[1] <- volatility(NormModel_AMZN,type = "h")[length(AMZN_Return)-1]
-  for (i in 2:(T+1)){
-    temp <- c(1,Sim_AMZN_residual[i-1]^2,Sim_AMZN_sigma2[i-1])
-    Sim_AMZN_sigma2[i] <- t(temp) %*% Gcoef_AMZN
-    Sim_AMZN_residual[i] <- sqrt(Sim_AMZN_sigma2[i]) * rnorm(1)
-  }
-  Sim_AMZN_return <- (Sim_AMZN_return + Sim_AMZN_residual)
-  Sim_AMZN_return[1] <- 0
-  Sim_AMZN <- as.numeric(exp(cumsum(Sim_AMZN_return)) * AMZN[length(AMZN)])
-  Sim_AMZN
-}
-par(mfrow=c(1,1))
-Output_AAPL <- t(sapply(1:P, Sim_AAPL))
-Output_AMZN <- t(sapply(1:P, Sim_AMZN))
-#mean(log(Output_AAPL[,253]) - log(Output_AAPL[,1]))/252 # to check the mean
-save(Output_AAPL, Output_AAPL, file='garchData.rda')
-```
-
-```{r BEKK}
-#install.packages("MTS")
-#install.packages("expm")
-#install.packages("MASS")
-library(MTS)
-library(expm)
-library(MASS)
-library(zoo)
-# Fit BEKK model (bivariate GARCH Model) use log return
-M2 <- BEKK11(R) # R is the 757 * 2 log-returns from independent GARCH
-# Extract coefficients/parameters in BEKK model and store them in vectors/matrices
-mu <- M2$estimates[1:2]
-C <- matrix(c(M2$estimates[3:4],0,M2$estimates[5]), byrow=F, nrow=2)
-A <- matrix(c(M2$estimates[6:9]), byrow=F, nrow=2)
-B <- matrix(c(M2$estimates[10:13]), byrow=F, nrow=2)
-# find the last day Residual vector and SIGMA matrix for simulation
-Last.Residual <- R[length(R[,1]),] - mu
-Last.SIGMA <- matrix(M2$Sigma.t[length(R[,1]),], nrow=2)
-# Simulation based on BEKK Model
-update_SIGMA <- function(SIGMA, Xi){
-  update_SIGMA <- C %*% t(C) + A %*% (Xi %*% t(Xi)) %*% t(A) + B %*% SIGMA %*% t(B)
-}
-BEKK_Simu <- function(rept){
-  Return_base <- matrix(rep((mu), T+1), nrow=2, byrow=F) # Constant mean vector
-  SIGMA <- matrix(rep(Last.SIGMA,T+1), nrow=2, byrow=F) # For storing the conditional Variance Covariance Matrices
-  Residual <- matrix(rep(Last.Residual,T+1), nrow=2, byrow=F) # For storing the residuals
-  for (i in 2:(T+1)){
-    SIGMA[,(2*i-1):(2*i)] <- update_SIGMA(SIGMA[,(2*i-3):(2*i-2)], Residual[,i-1])
-    Residual[,i] <- mvrnorm(n = 1, mu = c(0,0), Sigma = SIGMA[,(2*i-1):(2*i)])
-  }
-  Sim_R <- Return_base + Residual
-  Sim_R[,1] <- c(0,0)
-  Sim_S <- exp(t(apply(Sim_R, 1, cumsum))) * c(AAPL[length(AAPL)], AMZN[length(AMZN)])
-  return(Sim_S)
-}
-Output_BEKK_AAPL <- matrix(0, nrow = P, ncol=T_3m+1)
-Output_BEKK_AMZN <- Output_BEKK_AAPL
-for (rept in 1:P){
-  temp <- BEKK_Simu(rept)
-  Output_BEKK_AAPL[rept,] <- temp[1,]
-  Output_BEKK_AMZN[rept,] <- temp[2,]
-}
-
-save(Output_BEKK_AAPL, Output_BEKK_AMZN, file='bekkData.rda')
-```
-
-
 ```{r data for analysis}
 # use offline simulation data
-# rm(S1_gen, S2_gen, Output_BEKK_AAPL, Output_BEKK_AMZN)
-# load(file = "bekkData.rda")
-# load(file = "gbmData.rda")
+library(zoo)
+rm(S1_gen, S2_gen, Output_BEKK_AAPL, Output_BEKK_AMZN)
+load(file = "bekkData.rda")
+load(file = "gbmData.rda")
 
 simulationResults <- data.frame(alpha=double(),
                         beta=double(),
@@ -563,32 +359,4 @@ for (a in seq(from=0.5, to=1.5, by=0.5)) {
 # setwd("C:/Documents and Settings/Data")
 save(simulationResults, file = "simulationResults.rda")
 write.csv(simulationResults,'simulationResults.csv')
-```
-
-```{r historic data of 2007}
-price_AAPL <- as.numeric(getSymbols("AAPL", from ="2007-01-01", to = "2008-01-03", auto.assign = FALSE)$AAPL.Close)
-price_AMZN <- as.numeric(getSymbols("AMZN", from ="2007-01-01", to = "2008-01-03", auto.assign = FALSE)$AMZN.Close)
-length(price_AAPL)
-S_AAPL = matrix(price_AAPL, ncol=252)
-S_AMZN = matrix(price_AMZN, ncol=252)
-rs_hist1   <- GSLS(price = S_AAPL, I0 = I_0[1], V0 = V_0[1], alpha = a, beta = b, gamma = g, K = k, r=dailyRiskFeeRate, Imin = I_min)
-rs_hist2   <- GSLS(price = S_AMZN, I0 = I_0[2], V0 = V_0[2], alpha = a, beta = b, gamma = g, K = k, r=dailyRiskFeeRate, Imin = I_min)
-rs_ptfl_hist   <- GSLS_Ptfl(price1 = S_AAPL, price2 = S_AMZN, I0 = I_0, V0 = sum(V_0), alpha = a, beta = b, gamma = g, K = k, r=dailyRiskFeeRate, Imin = I_min)
-rs_hist1$return1m
-rs_hist2$return1m 
-rs_ptfl_hist$return1m
-```
-
-```{r historic data of 2008 }
-price_AAPL <- as.numeric(getSymbols("AAPL", from ="2008-09-01", to = "2008-12-31", auto.assign = FALSE)$AAPL.Close)
-price_AMZN <- as.numeric(getSymbols("AMZN", from ="2008-09-01", to = "2008-12-31", auto.assign = FALSE)$AMZN.Close)
-length(price_AAPL)
-S_AAPL = matrix(price_AAPL, ncol=length(price_AAPL))
-S_AMZN = matrix(price_AMZN, ncol=length(price_AMZN))
-rs_hist1   <- GSLS(price = S_AAPL, I0 = I_0[1], V0 = V_0[1], alpha = a, beta = b, gamma = g, K = k, r=dailyRiskFeeRate, Imin = I_min)
-rs_hist2   <- GSLS(price = S_AMZN, I0 = I_0[2], V0 = V_0[2], alpha = a, beta = b, gamma = g, K = k, r=dailyRiskFeeRate, Imin = I_min)
-rs_ptfl_hist   <- GSLS_Ptfl(price1 = S_AAPL, price2 = S_AMZN, I0 = I_0, V0 = sum(V_0), alpha = a, beta = b, gamma = g, K = k, r=dailyRiskFeeRate, Imin = I_min)
-rs_hist1$return1m
-rs_hist2$return1m 
-rs_ptfl_hist$return1m
 ```
