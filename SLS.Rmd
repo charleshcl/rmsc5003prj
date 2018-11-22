@@ -48,6 +48,7 @@ pct95 = 0.95
 
 ## Helper Functions 
 ```{r helper functions}
+## GSLS for a portfolio of two stocks
 ## parameters
 ## price1, price2: n by t matrix, where n is number of paths, 
 ##                 and t must be 63 days, which is three month trading days
@@ -132,6 +133,14 @@ GSLS_Ptfl <- function(price1, price2, I0, V0, alpha, beta, gamma, K, r, Imin) {
           IS[,t]  <- IS[,t] * gamma*V[t-1] /(sum(abs(I[,t])))
           I[,t] <- IL[,t] + IS[,t]
         }
+          
+        if (is.na(ctrlrReset[1,t])) {
+          message("t=", t, " rho[1,t]=", rho[1,t], " IL[1,t]=", IL[1,t], " IL[1,t-1]=", IL[1,t-1], " IS[1,t]=", IS[1,t], " alpha=", alpha, " beta=", beta, " gamma=", gamma)
+        }
+        if (is.na(ctrlrReset[2,t])) {
+          message("t=", t, " rho[2,t]=", rho[2,t], " IL[2,t]=", IL[2,t], " IL[2,t-1]=", IL[2,t-1], " IS[1,t]=", IS[2,t], " alpha=", alpha, " beta=", beta, " gamma=", gamma)
+        }
+  
       }
     }
     vResult[j] = V[T]
@@ -153,6 +162,7 @@ GSLS_Ptfl <- function(price1, price2, I0, V0, alpha, beta, gamma, K, r, Imin) {
   return(result)
 }
 
+## GSLS for single stock
 ## parameters
 ## price: n by t matrix, where n is number of paths, and t must be 63 days, which is three month trading days
 GSLS <- function(price, I0, V0, alpha, beta, gamma, K, r, Imin) {
@@ -443,6 +453,11 @@ save(Output_BEKK_AAPL, Output_BEKK_AMZN, file='bekkData.rda')
 
 
 ```{r data for analysis}
+# use offline simulation data
+# rm(S1_gen, S2_gen, Output_BEKK_AAPL, Output_BEKK_AMZN)
+# load(file = "bekkData.rda")
+# load(file = "gbmData.rda")
+
 simulationResults <- data.frame(alpha=double(),
                         beta=double(),
                         K=double(),
