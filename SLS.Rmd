@@ -21,8 +21,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r get stock price}
 library(quantmod)
 
-price_AAPL = getSymbols("AAPL", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)
-price_AMZN = getSymbols("AMZN", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)
+price_AAPL = getSymbols("AAPL", from ="2015-11-15", to = "2018-11-14", auto.assign = FALSE)
+price_AMZN = getSymbols("AMZN", from ="2015-11-15", to = "2018-11-14", auto.assign = FALSE)
 
 save(price_AAPL, price_AMZN, file = "StockPriceData.rda")
 ```
@@ -312,8 +312,8 @@ library(fGarch)
 # P = 100 # Number of Sample Path
 # T = 10  # Length of simulation Series
 ############# Download stock data and calculate log-returns ##############
-AAPL <- as.numeric(getSymbols("AAPL", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)$AAPL.Close)
-AMZN <- as.numeric(getSymbols("AMZN", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)$AMZN.Close)
+AAPL <-(getSymbols("AAPL", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)$AAPL.Close)
+AMZN <- (getSymbols("AMZN", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)$AMZN.Close)
 # Calculation Log-returns
 Data <- cbind(AAPL, AMZN)
 R <- apply(log(Data),2,diff)
@@ -321,8 +321,8 @@ AAPL_Return <- R[,1]
 AMZN_Return <- R[,2]
 # Plot returns
 par(mfrow=c(2,1))
-plot(AAPL_Return,type="l", xlab="Time", ylab = "AAPL", main="Log-returns for AAPL") # Plot log-return series to visualize heteroskedsticity
-plot(AMZN_Return,type="l", xlab="Time", ylab = "AMZN", main="Log-returns for AMZN")
+plot(AAPL_Return,type="l", xlab="Time", ylab = "AAPL", main="Historical Log-returns for AAPL") # Plot log-return series to visualize heteroskedsticity
+plot(AMZN_Return,type="l", xlab="Time", ylab = "AMZN", main="Historical Log-returns for AMZN")
 # Plot acf & pacf for return and squared return
 acf(AAPL_Return)
 acf(AMZN_Return)
