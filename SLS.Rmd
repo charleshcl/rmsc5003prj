@@ -494,25 +494,25 @@ for (a in seq(from=0.5, to=1.5, by=0.5)) {
       garchPftlRet1m = rsBEKK_ptfl$return1m
 
       # plot histogram and denity curve
-      hist( gbmPftlRet1m,   main=paste("Histogram of Portfolio Return under BS Model \n with alpha=", a, " beta=", b, " K=", k, "T=1 Month"), xlim =c(min(gbmPftlRet1m)-0.1, max(gbmPftlRet1m)+0.1),breaks = 20, xlab="Return")
+      hist( gbmPftlRet1m,   main=paste("Histogram of Portfolio Return under BS Model \n with alpha=", a, " beta=", b, " K=", k, "T=1 Month"), xlim =c(min(gbmPftlRet1m)-0.01, max(gbmPftlRet1m)+0.01),breaks = 20, xlab="Return")
       dens=density(gbmPftlRet1m)
       lines(dens$x,length(gbmPftlRet1m) * (max(gbmPftlRet1m) - min(gbmPftlRet1m)) *dens$y / 20) 
       abline(v=mean(gbmPftlRet1m),col=3) # green line for mean
       abline(v=-getVaR(gbmPftlRet1m, pct99),col=2) # red line for 99% VaR
       
-      hist( garchPftlRet1m, main=paste("Histogram of Portfolio Return under GARCH Model \n with alpha =", a, " beta=", b, " K=", k, "T=1 Month"), xlim =c(min(garchPftlRet1m)-0.1, max(garchPftlRet1m)+0.1),breaks = 20, xlab="Return")
+      hist( garchPftlRet1m, main=paste("Histogram of Portfolio Return under GARCH Model \n with alpha =", a, " beta=", b, " K=", k, "T=1 Month"), xlim =c(min(garchPftlRet1m)-0.01, max(garchPftlRet1m)+0.01),breaks = 20, xlab="Return")
       dens=density(garchPftlRet1m)
       lines(dens$x,length(garchPftlRet1m) * (max(garchPftlRet1m) - min(garchPftlRet1m)) *dens$y / 20) 
       abline(v=mean(garchPftlRet1m),col=3) # green line for mean
       abline(v=-getVaR(garchPftlRet1m, pct99),col=2) # red line for 99% VaR
       
-      hist( gbmPftlRet3m,   main=paste("Histogram of Portfolio Return under BS Model \n with alpha=", a, " beta=", b, " K=", k, "T=3 Months"), xlim =c(min(gbmPftlRet3m)-0.1, max(gbmPftlRet3m)+0.1),breaks = 20, xlab="Return")
+      hist( gbmPftlRet3m,   main=paste("Histogram of Portfolio Return under BS Model \n with alpha=", a, " beta=", b, " K=", k, "T=3 Months"), xlim =c(min(gbmPftlRet3m)-0.01, max(gbmPftlRet3m)+0.01),breaks = 20, xlab="Return")
       dens=density(gbmPftlRet3m)
       lines(dens$x,length(gbmPftlRet3m) * (max(gbmPftlRet3m) - min(gbmPftlRet3m)) *dens$y / 20) 
       abline(v=mean(gbmPftlRet3m),col=3) # green line for mean
       abline(v=-getVaR(gbmPftlRet3m, pct99),col=2) # red line for 99% VaR
       
-      hist( garchPftlRet3m, main=paste("Histogram of Portfolio Return under GARCH Model with \n alpha =", a, " beta =", b, " K=", k, "T = 3 Months"), xlim =c(min(garchPftlRet3m)-0.1, max(garchPftlRet3m)+0.1),breaks = 20, xlab="Return")
+      hist( garchPftlRet3m, main=paste("Histogram of Portfolio Return under GARCH Model with \n alpha =", a, " beta =", b, " K=", k, "T = 3 Months"), xlim =c(min(garchPftlRet3m)-0.01, max(garchPftlRet3m)+0.01),breaks = 20, xlab="Return")
       dens=density(garchPftlRet3m)
       lines(dens$x,length(garchPftlRet3m) * (max(garchPftlRet3m) - min(garchPftlRet3m)) *dens$y / 20)
       abline(v=mean(garchPftlRet3m),col=3) # green line for mean
@@ -525,12 +525,17 @@ for (a in seq(from=0.5, to=1.5, by=0.5)) {
       lines(sample[2,],col="Red",lwd=2)
       lines(sample[3,],col="Red",lwd=2)
       #plot(c(1:253, 1:253, 1:253), c(sample[1,],sample[2,],sample[3,]), type="l", main=paste("Contour of Portfolio Simulation based on GBM Model", "alpha =", a, " beta =", b, " K=", k), xlab="time", ylab="pct return")
+      abline(h=0,col=3) # green line for 0
+
+      
       sample = apply( (rsBEKK_ptfl$allV - sum_V_0) / sum_V_0, 2, quantile, probs=c(0.01, 0.5, 0.99))
       plot.zoo(t((rsBEKK_ptfl$allV - sum_V_0) / sum_V_0), main = paste("Sample Return Paths and Empirical Confidence Envelope\n(BEKK Model) ", "alpha=", a, " beta=", b, " K=", k), xlab="t", ylab="Portfolio Return", plot.type = "single")
       lines(sample[1,],col="Red",lwd=2)
       lines(sample[2,],col="Red",lwd=2)
       lines(sample[3,],col="Red",lwd=2)
       #plot(c(1:253, 1:253, 1:253), c(sample[1,],sample[2,],sample[3,]), type="l", main=paste("ontour of Portfolio Simulation based on BEKK Model", "alpha =", a, " beta =", b, " K=", k), xlab="time", ylab="pct return")
+      abline(h=0,col=3) # green line for 0
+
       
       #save stimulation result
       stimulationRec <- data.frame(alpha=a,
