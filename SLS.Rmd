@@ -312,8 +312,8 @@ library(fGarch)
 # P = 100 # Number of Sample Path
 # T = 10  # Length of simulation Series
 ############# Download stock data and calculate log-returns ##############
-AAPL <-(getSymbols("AAPL", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)$AAPL.Close)
-AMZN <- (getSymbols("AMZN", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)$AMZN.Close)
+AAPL <- as.numeric(getSymbols("AAPL", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)$AAPL.Close)
+AMZN <- as.numeric(getSymbols("AMZN", from ="2015-11-15", to = "2018-11-15", auto.assign = FALSE)$AMZN.Close)
 # Calculation Log-returns
 Data <- cbind(AAPL, AMZN)
 R <- apply(log(Data),2,diff)
