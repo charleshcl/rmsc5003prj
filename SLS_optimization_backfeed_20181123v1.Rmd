@@ -1,0 +1,231 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+#Pre-requisite: Please run Global Variables and Helper Functions first!
+```{r Back-feed historical data analysis - download data for optimization}
+
+################################## 4 scenario ###################################
+# Beware that getSymbols(..to=20180101) exclude 20180101!  type 1 day after!    # 
+# 1.Drop: 20071008-20080108 (-43.22%);     3m data for optim: 20070709-20071008 #
+# 2.Rise: 20090305-20090604 (+250.00%);    3m data for optim: 20081202-20090305 #
+# 3.Stable:20070321-20070620 (sd 0.99%);   3m data for optim: 20061215-20070321 #
+# 4.Volatile:20090109-20090413 (sd 14.14%);3m data for optim: 20081009-20090107 #
+#################################################################################
+
+# download Citigroup price
+library(quantmod)
+# For Drop
+price_C_dropForOpt <- as.numeric(getSymbols("C", from ="2007-07-09", to = "2007-10-09", auto.assign = FALSE)$C.Close)
+length(price_C_dropForOpt)
+S_C_dropForOpt = matrix(price_C_dropForOpt, ncol=length(price_C_dropForOpt))
+
+# For Rise
+price_C_riseForOpt <- as.numeric(getSymbols("C", from ="2008-12-2", to = "2009-03-06", auto.assign = FALSE)$C.Close)
+length(price_C_riseForOpt)
+S_C_riseForOpt = matrix(price_C_riseForOpt, ncol=length(price_C_riseForOpt))
+
+# For Stable
+price_C_stabForOpt <- as.numeric(getSymbols("C", from ="2006-12-15", to = "2007-03-22", auto.assign = FALSE)$C.Close)
+length(price_C_stabForOpt)
+S_C_stabForOpt = matrix(price_C_stabForOpt, ncol=length(price_C_stabForOpt))
+
+# For Volatile
+price_C_volForOpt <- as.numeric(getSymbols("C", from ="2008-10-09", to = "2009-01-10", auto.assign = FALSE)$C.Close)
+length(price_C_volForOpt)
+S_C_volForOpt = matrix(price_C_volForOpt, ncol=length(price_C_volForOpt))
+
+```
+
+```{r Back-feed historical data analysis - optimization}
+simulationResults <- data.frame(alpha=double(),
+                        beta=double(),
+                        K=double(),
+                        bfPftlRet3m_drop=double(),
+                        bfPftlRet3m_rise=double(),
+                        bfPftlRet3m_stab=double(),
+                        bfPftlRet3m_vol=double()
+                        )
+sum_V_0 = sum(V_0)
+
+ret_drop_max=-1
+ret_rise_max=-1
+ret_stab_max=-1
+ret_vol_max=-1
+a_drop_max=0
+b_drop_max=0
+k_drop_max=0
+a_rise_max=0
+b_rise_max=0
+k_rise_max=0
+a_stab_max=0
+b_stab_max=0
+k_stab_max=0
+a_vol_max=0
+b_vol_max=0
+k_vol_max=0
+
+for (a in seq(from=0.5, to=1.5, by=0.5)) {
+  for (b in seq(from=0.5, to=1.5, by=0.5)) {
+    for (k in seq(from=1, to=5, by=2)) {
+
+      rsBF_ptfl_drop <- GSLS_Ptfl(price1 = S_C_dropForOpt, price2 = S_C_dropForOpt, I0 = I_0, V0 = sum(V_0), alpha = a, beta = b, gamma = g, K = k, r=dailyRiskFeeRate, Imin = I_min)
+      rsBF_ptfl_rise <- GSLS_Ptfl(price1 = S_C_riseForOpt, price2 = S_C_riseForOpt, I0 = I_0, V0 = sum(V_0), alpha = a, beta = b, gamma = g, K = k, r=dailyRiskFeeRate, Imin = I_min)
+      rsBF_ptfl_stab <- GSLS_Ptfl(price1 = S_C_stabForOpt, price2 = S_C_stabForOpt, I0 = I_0, V0 = sum(V_0), alpha = a, beta = b, gamma = g, K = k, r=dailyRiskFeeRate, Imin = I_min)
+      rsBF_ptfl_vol <- GSLS_Ptfl(price1 = S_C_volForOpt, price2 = S_C_volForOpt, I0 = I_0, V0 = sum(V_0), alpha = a, beta = b, gamma = g, K = k, r=dailyRiskFeeRate, Imin = I_min)
+      
+      # initialize portfolio calculation
+      bfPftlRet3m_drop   = rsBF_ptfl_drop$return3m
+      bfPftlRet3m_rise   = rsBF_ptfl_rise$return3m
+      bfPftlRet3m_stab   = rsBF_ptfl_stab$return3m
+      bfPftlRet3m_vol    = rsBF_ptfl_vol$return3m      
+      
+      #record optimized parameters
+      if(bfPftlRet3m_drop > ret_drop_max) {
+        ret_drop_max = bfPftlRet3m_drop
+        a_drop_max = a
+        b_drop_max = b
+        k_drop_max = k
+      } 
+      if(bfPftlRet3m_rise > ret_rise_max) {
+        ret_rise_max = bfPftlRet3m_rise
+        a_rise_max = a
+        b_rise_max = b
+        k_rise_max = k
+      } 
+      if(bfPftlRet3m_stab > ret_stab_max) {
+        ret_stab_max = bfPftlRet3m_stab
+        a_stab_max = a
+        b_stab_max = b
+        k_stab_max = k
+      } 
+      if(bfPftlRet3m_vol > ret_vol_max) {
+        ret_vol_max = bfPftlRet3m_vol
+        a_vol_max = a
+        b_vol_max = b
+        k_vol_max = k
+      } 
+      #save stimulation result
+      stimulationRec <- data.frame(alpha=a,
+                        beta=b,
+                        K=k,
+                        bfPftlRet3m_drop,
+                        bfPftlRet3m_rise,
+                        bfPftlRet3m_stab,
+                        bfPftlRet3m_vol
+                        )
+      simulationResults <- rbind(simulationResults, stimulationRec)
+    }
+  }
+}
+message("Drop case max return =     ", round(ret_drop_max,4), " with a = ", a_drop_max, ", b = ", b_drop_max, ", k = ", k_drop_max)
+message("Rise case max return =     ", round(ret_rise_max,4), " with a = ", a_rise_max, ", b = ", b_rise_max, ", k = ", k_rise_max)
+message("Stable case max return =   ", round(ret_stab_max,4), " with a = ", a_stab_max, ", b = ", b_stab_max, ", k = ", k_stab_max)
+message("Volatile case max return = ", round(ret_vol_max,4), " with a = ", a_vol_max, ", b = ", b_vol_max, ", k = ", k_vol_max)
+
+write.csv(simulationResults,'optimizationResults(backfeed).csv')
+```
+
+```{r Back-feed historical data analysis - backfeed to strategy}
+
+################################## 4 scenario ###################################
+# Beware that getSymbols(..to=20180101) exclude 20180101!  type 1 day after!    # 
+# 1.Drop: 20071008-20080108 (-43.22%);     3m data for optim: 20070709-20071008 #
+# 2.Rise: 20090305-20090604 (+250.00%);    3m data for optim: 20081202-20090305 #
+# 3.Stable:20070321-20070620 (sd 0.99%);   3m data for optim: 20061215-20070321 #
+# 4.Volatile:20090109-20090413 (sd 14.14%);3m data for optim: 20081009-20090107 #
+#################################################################################
+
+# download Citigroup price
+library(quantmod)
+    # For Drop
+    price_C_drop <- as.numeric(getSymbols("C", from ="2007-10-08", to = "2008-01-09", auto.assign = FALSE)$C.Close)
+    length(price_C_drop)
+    S_C_drop = matrix(price_C_drop, ncol=length(price_C_drop))
+    
+    # For Rise
+    price_C_rise <- as.numeric(getSymbols("C", from ="2009-03-05", to = "2009-06-05", auto.assign = FALSE)$C.Close)
+    length(price_C_rise)
+    S_C_rise = matrix(price_C_rise, ncol=length(price_C_rise))
+    
+    # For Stable
+    price_C_stab <- as.numeric(getSymbols("C", from ="2007-03-21", to = "2007-06-21", auto.assign = FALSE)$C.Close)
+    length(price_C_stab)
+    S_C_stab = matrix(price_C_stab, ncol=length(price_C_stab))
+    
+    # For Volatile
+    price_C_vol <- as.numeric(getSymbols("C", from ="2009-01-09", to = "2009-04-14", auto.assign = FALSE)$C.Close)
+    length(price_C_vol)
+    S_C_vol = matrix(price_C_vol, ncol=length(price_C_vol))
+
+    
+
+# Fit data to GSLS function
+    rs_hist_drop = GSLS(price = S_C_drop, I0 = I_0[1], V0 = V_0[1], alpha = a_drop_max, beta = b_drop_max, gamma = g, K = k_drop_max, r=dailyRiskFeeRate, Imin = I_min)
+    rs_hist_rise = GSLS(price = S_C_rise, I0 = I_0[1], V0 = V_0[1], alpha = a_rise_max, beta = b_rise_max, gamma = g, K = k_rise_max, r=dailyRiskFeeRate, Imin = I_min)
+    rs_hist_stab = GSLS(price = S_C_stab, I0 = I_0[1], V0 = V_0[1], alpha = a_stab_max, beta = b_stab_max, gamma = g, K = k_stab_max, r=dailyRiskFeeRate, Imin = I_min)
+    rs_hist_vol  = GSLS(price = S_C_vol, I0 = I_0[1], V0 = V_0[1], alpha = a_vol_max, beta = b_vol_max, gamma = g, K = k_vol_max, r=dailyRiskFeeRate, Imin = I_min)
+    
+    
+
+# Plot graph
+    # For Drop
+    par(las=1)
+    par(mar = c(5, 5, 3, 10))
+    plot(S_C_drop[1,], type="l", ylim=c(min(S_C_drop),max(S_C_drop)), main = paste("SLS Return in Bearish Market\n with optimal alpha = ",a_drop_max, " beta = ", b_drop_max, " K = ", k_drop_max), xlab="time", ylab="Stock Price", col="blue",lty=2)
+    par(new=TRUE)
+    plot(rs_hist_drop$allV[1,],type="l", axes=FALSE, xlab="", ylab="", col="orange", lwd=2.5)
+    axis(side=4)
+    mtext("Account Value", side = 4, line = 5, las=3)
+    legend("top", c("SLS Return","Historical Stock Price"), col=c("orange","blue"), lty=c(1,2), cex=0.65)
+    
+    # For Rise
+    par(las=1)
+    par(mar = c(5, 5, 3, 10))
+    plot(S_C_rise[1,], type="l", ylim=c(min(S_C_rise),max(S_C_rise)), main = paste("SLS Return in Bullish Market\n with optimal alpha = ",a_rise_max, " beta = ", b_rise_max, " K = ", k_rise_max), xlab="time", ylab="Stock Price", col="blue",lty=2)
+    par(new=TRUE)
+    plot(rs_hist_rise$allV[1,],type="l", axes=FALSE, xlab="", ylab="", col="orange", lwd=2.5)
+    axis(side=4)
+    mtext("Account Value", side = 4, line = 5, las=3)
+    legend("bottomright", c("SLS Return","Historical Stock Price"), col=c("orange","blue"), lty=c(1,2), cex=0.65)
+    
+    # For Stable
+    par(las=1)
+    par(mar = c(5, 5, 3, 10))
+    plot(S_C_stab[1,], type="l", ylim=c(min(S_C_stab),max(S_C_stab)), main = paste("SLS Return in Stable Market\n with optimal alpha = ",a_stab_max, " beta = ", b_stab_max, " K = ", k_stab_max), xlab="time", ylab="Stock Price", col="blue",lty=2)
+    par(new=TRUE)
+    plot(rs_hist_stab$allV[1,],type="l", axes=FALSE, xlab="", ylab="", col="orange", lwd=2.5)
+    axis(side=4)
+    mtext("Account Value", side = 4, line = 5, las=3)
+    legend("top", c("SLS Return","Historical Stock Price"), col=c("orange","blue"), lty=c(1,2), cex=0.65)
+    
+    # For Volatile
+    par(las=1)
+    par(mar = c(5, 5, 3, 10))
+    plot(S_C_vol[1,], type="l", ylim=c(min(S_C_vol),max(S_C_vol)), main = paste("SLS Return in Volatile Market\n with optimal alpha = ",a_vol_max, " beta = ", b_vol_max, " K = ", k_vol_max), xlab="time", ylab="Stock Price", col="blue",lty=2)
+    par(new=TRUE)
+    plot(rs_hist_vol$allV[1,],type="l", axes=FALSE, xlab="", ylab="", col="orange", lwd=2.5)
+    axis(side=4)
+    mtext("Account Value", side = 4, line = 5, las=3)
+    legend("bottomright", c("SLS Return","Historical Stock Price"), col=c("orange","blue"), lty=c(1,2), cex=0.65)
+
+    
+    
+# Calculate daily return of the feedback data, and Sharpe Ratio
+    #S_C_ret_drop = (S_C_drop[1,2:ncol(S_C_drop)]/S_C_drop[1,1:(ncol(S_C_drop)-1)] -1)
+    #S_C_ret_rise = (S_C_rise[1,2:ncol(S_C_rise)]/S_C_rise[1,1:(ncol(S_C_rise)-1)] -1)
+    #S_C_ret_stab = (S_C_stab[1,2:ncol(S_C_stab)]/S_C_stab[1,1:(ncol(S_C_stab)-1)] -1)
+    #S_C_ret_vol = (S_C_vol[1,2:ncol(S_C_vol)]/S_C_vol[1,1:(ncol(S_C_vol)-1)] -1)
+    rs_hist_ret_drop = (rs_hist_drop$allV[1,2:ncol(rs_hist_drop$allV)] / rs_hist_drop$allV[1, 1:(ncol(rs_hist_drop$allV)-1)] -1)
+    rs_hist_ret_rise = (rs_hist_rise$allV[1,2:ncol(rs_hist_rise$allV)] / rs_hist_rise$allV[1, 1:(ncol(rs_hist_rise$allV)-1)] -1)
+    rs_hist_ret_stab = (rs_hist_stab$allV[1,2:ncol(rs_hist_stab$allV)] / rs_hist_stab$allV[1, 1:(ncol(rs_hist_stab$allV)-1)] -1)
+    rs_hist_ret_vol = (rs_hist_vol$allV[1,2:ncol(rs_hist_vol$allV)] / rs_hist_vol$allV[1, 1:(ncol(rs_hist_vol$allV)-1)] -1)
+    
+    # Sharpe Ratio = [ mean(daily portfolio return) - R_f ] / daily portfolio SD
+    message("Sharpe Ratio (drop) = ",  (mean(rs_hist_ret_drop)-dailyRiskFeeRate)/sd(rs_hist_ret_drop))
+    message("Sharpe Ratio (rise) = ",  (mean(rs_hist_ret_rise)-dailyRiskFeeRate)/sd(rs_hist_ret_rise))
+    message("Sharpe Ratio (stab) = ",  (mean(rs_hist_ret_stab)-dailyRiskFeeRate)/sd(rs_hist_ret_stab))
+    message("Sharpe Ratio (vol) =  ",  (mean(rs_hist_ret_vol) -dailyRiskFeeRate)/sd(rs_hist_ret_vol))
+    
+```
