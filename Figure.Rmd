@@ -33,6 +33,7 @@ pct95 = 0.95
 ```
 
 ## Helper Functions 
+##   copy from SLS.Rmd
 ```{r helper functions}
 ## GSLS for a portfolio of two stocks
 ## parameters
@@ -251,7 +252,17 @@ getES <- function(inSamples, VaRValue) {
 }
 ```
 
+Pre-requisite: bekkData.rda and gbmData.rda were obtained from SLS.Rmd
+
 ```{r data for analysis}
+###################
+# change a, b and k for plotting graphs for specific alpha/beta/K combination
+###################
+a = 1
+b = 0.5
+k = 1
+###################
+
 # use offline simulation data
 rm(S1_gen, S2_gen, Output_BEKK_AAPL, Output_BEKK_AMZN)
 load(file = "bekkData.rda")
@@ -279,12 +290,7 @@ simulationResults <- data.frame(alpha=double(),
                         )
 sum_V_0 = sum(V_0)
 
-a = 1.5
-b = 0.5
-k = 1
-# for (a in seq(from=0.5, to=1.5, by=0.5)) {
-#   for (b in seq(from=0.5, to=1.5, by=0.5)) {
-#     for (k in seq(from=1, to=5, by=2)) {
+
       # rs stands for result set
       rsBS_ptfl <- GSLS_Ptfl(price1 = S1_gen, price2 = S2_gen,I0 = I_0, V0 = sum(V_0), alpha = a, beta = b, gamma = g, K = k, r=dailyRiskFeeRate, Imin = I_min)
       
@@ -297,6 +303,21 @@ k = 1
       garchPftlRet1m = rsBEKK_ptfl$return1m
 
       # plot histogram and denity curve
+      
+      #### on gain
+      hist( rsBS_ptfl$gain,   main=paste("Histogram of Portfolio Gain under BS Model \n with alpha=", a, " beta=", b, " K=", k, "T=3 Month"), xlim =c(min(rsBS_ptfl$gain)-0.01, max(rsBS_ptfl$gain)+0.01),breaks = 20, xlab="Gain")
+      dens=density(rsBS_ptfl$gain)
+      lines(dens$x,length(rsBS_ptfl$gain) * (max(rsBS_ptfl$gain) - min(rsBS_ptfl$gain)) *dens$y / 20) 
+      abline(v=mean(rsBS_ptfl$gain),col=3) # green line for mean
+      abline(v=-getVaR(rsBS_ptfl$gain, pct99),col=2) # red line for 99% VaR
+      
+      hist( rsBEKK_ptfl$gain,   main=paste("Histogram of Portfolio Gain under GARCH Model \n with alpha=", a, " beta=", b, " K=", k, "T=3 Month"), xlim =c(min(rsBEKK_ptfl$gain)-0.01, max(rsBEKK_ptfl$gain)+0.01),breaks = 20, xlab="Gain")
+      dens=density(rsBEKK_ptfl$gain)
+      lines(dens$x,length(rsBS_ptfl$gain) * (max(rsBEKK_ptfl$gain) - min(rsBEKK_ptfl$gain)) *dens$y / 20) 
+      abline(v=mean(rsBEKK_ptfl$gain),col=3) # green line for mean
+      abline(v=-getVaR(rsBEKK_ptfl$gain, pct99),col=2) # red line for 99% VaR      
+      ####
+      
       hist( gbmPftlRet1m,   main=paste("Histogram of Portfolio Return under BS Model \n with alpha=", a, " beta=", b, " K=", k, "T=1 Month"), xlim =c(min(gbmPftlRet1m)-0.01, max(gbmPftlRet1m)+0.01),breaks = 20, xlab="Return")
       dens=density(gbmPftlRet1m)
       lines(dens$x,length(gbmPftlRet1m) * (max(gbmPftlRet1m) - min(gbmPftlRet1m)) *dens$y / 20) 
@@ -365,10 +386,7 @@ k = 1
                         median_1m_GARCH_PTFL=median(garchPftlRet1m)
                         )
       simulationResults <- rbind(simulationResults, stimulationRec)
-#     }
-#   }
-# }
-# setwd("C:/Documents and Settings/Data")
+
 save(simulationResults, file = "simulationResults.rda")
 write.csv(simulationResults,'simulationResults.csv')
 ```
@@ -378,6 +396,11 @@ write.csv(simulationResults,'simulationResults.csv')
 # b=0.5
 # k=1
 # rsBS_ptfl <- GSLS_Ptfl(price1 = S1_gen, price2 = S2_gen,I0 = I_0, V0 = sum(V_0), alpha = a, beta = b, gamma = g, K = k, r=dailyRiskFeeRate, Imin = I_min)
+
+rm(S1_gen, S2_gen, Output_BEKK_AAPL, Output_BEKK_AMZN)
+load(file = "bekkData10k.rda")
+load(file = "gbmData10k.rda")
+
 
 library(ggplot2)
 
@@ -389,16 +412,16 @@ length(t)
 
 plotData = data.frame(return1m <- rsBS_ptfl$return1m, x_t <- t)
 
-# qplot(rsBS_ptfl$return1m, geom="histogram") 
-
 ggplot(data=plotData, aes(plotData$return1m)) + 
   geom_histogram(
     center=TRUE,
-    # breaks=seq(-0.015, 0.02, by=0.0005), 
+    breaks=seq(-0.1, 0.15, by=0.005),
                  col="red", 
                  fill="green", 
-                 alpha = .1) + 
-  labs(title="..................") +   geom_density(col=1) +geom_freqpoly()
+                 alpha = .2) + 
+  labs(title="..................") +  geom_density(col=5) 
+
++geom_freqpoly()
 
 ggplot(data=plotData, aes(plotData$return1m)) + geom_histogram() 
 

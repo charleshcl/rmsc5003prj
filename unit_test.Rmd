@@ -7,28 +7,8 @@ output: word_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
-```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
-
-
 ## Unit Test Case 
+not for submit as unit test breaks after modification
 pre-requisite: initialize the helper functions in SLS.Rmd 
 ```{r test case 01}
 #test case 01
@@ -186,5 +166,10 @@ price_AMZN = getSymbols("AMZN", from ="2015-11-15", to = "2018-11-15", auto.assi
 save(price_AAPL, price_AMZN, file = "StockPriceData.rda")
 rm(price_AAPL, price_AMZN)
 load(file = "StockPriceData.rda")
+```
+
+```{r}
+price_AAPL = getSymbols("AAPL", from ="2015-11-15", to = "2018-11-14", auto.assign = FALSE)
+price_AAPL
 ```
 
